@@ -13,10 +13,6 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        destination: 'https://tashkentlaw.ilmify-edu.uz/api/:path*',
-      },
-      {
         source: '/uploads/:path*',
         destination: 'https://tashkentlaw.ilmify-edu.uz/uploads/:path*',
       },
