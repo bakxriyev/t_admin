@@ -106,7 +106,8 @@ export function EntityForm({
       };
       fetchData();
     }
-  }, [params?.id, isEdit, apiEndpoint, JSON.stringify(fields)]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params?.id, isEdit, apiEndpoint]);
 
   const handleFileChange = (name: string, file: File | null) => {
     setFileValues((prev) => ({ ...prev, [name]: file }));

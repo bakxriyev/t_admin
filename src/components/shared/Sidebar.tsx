@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -38,18 +38,34 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+let settingsCache: any = null;
+let settingsPromise: Promise<any> | null = null;
+
 function SidebarNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { setMobileOpen } = useSidebar();
   const { t } = useTranslation();
   const { lang } = useLanguage();
-  const [settings, setSettings] = useState<any>(null);
+  const [settings, setSettings] = useState<any>(settingsCache);
 
   useEffect(() => {
-    api.get("/api/settings")
-      .then((res) => { const d = res.data.data || res.data; setSettings(d); })
-      .catch(() => {});
+    if (settingsCache) {
+      setSettings(settingsCache);
+      return;
+    }
+
+    if (!settingsPromise) {
+      settingsPromise = api.get("/api/settings").then((res) => {
+        const d = res.data.data || res.data;
+        settingsCache = d;
+        return d;
+      }).catch(() => null);
+    }
+
+    settingsPromise.then((d) => {
+      if (d) setSettings(d);
+    });
   }, []);
 
   const siteName = settings

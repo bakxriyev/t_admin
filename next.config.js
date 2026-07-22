@@ -3,9 +3,9 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '3030',
+        protocol: 'https',
+        hostname: 'tashkentlaw.ilmify-edu.uz',
+        port: '',
         pathname: '/uploads/**',
       },
     ],
@@ -13,11 +13,16 @@ const nextConfig = {
   async rewrites() {
     return [
       {
+        source: '/api/:path*',
+        destination: 'https://tashkentlaw.ilmify-edu.uz/api/:path*',
+      },
+      {
         source: '/uploads/:path*',
-        destination: 'http://localhost:3030/uploads/:path*',
+        destination: 'https://tashkentlaw.ilmify-edu.uz/uploads/:path*',
       },
     ];
   },
+  transpilePackages: ['@tanstack/react-table'],
 };
 
 module.exports = nextConfig;

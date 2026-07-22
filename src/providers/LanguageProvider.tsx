@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { type Lang } from "@/lib/translations";
 
 interface LanguageContextType {
@@ -18,40 +18,36 @@ const LanguageContext = createContext<LanguageContextType>({
 });
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Lang>("uz");
-  const [formLang, setFormLang] = useState<Lang>("uz");
+  const [lang, setLangState] = useState<Lang>("uz");
+  const [formLang, setFormLangState] = useState<Lang>("uz");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const saved = localStorage.getItem("admin-lang") as Lang | null;
     if (saved && ["uz", "ru", "en"].includes(saved)) {
-      setLang(saved);
+      setLangState(saved);
     }
     const savedForm = localStorage.getItem("admin-form-lang") as Lang | null;
     if (savedForm && ["uz", "ru", "en"].includes(savedForm)) {
-      setFormLang(savedForm);
+      setFormLangState(savedForm);
     }
+    setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (mounted) {
-      localStorage.setItem("admin-lang", lang);
-    }
-  }, [lang, mounted]);
+  const setLang = useCallback((l: Lang) => {
+    setLangState(l);
+    localStorage.setItem("admin-lang", l);
+  }, []);
 
-  useEffect(() => {
-    if (mounted) {
-      localStorage.setItem("admin-form-lang", formLang);
-    }
-  }, [formLang, mounted]);
+  const setFormLang = useCallback((l: Lang) => {
+    setFormLangState(l);
+    localStorage.setItem("admin-form-lang", l);
+  }, []);
 
-  if (!mounted) {
-    return <>{children}</>;
-  }
+  const value = useMemo(() => ({ lang, setLang, formLang, setFormLang }), [lang, setLang, formLang, setFormLang]);
 
   return (
-    <LanguageContext.Provider value={{ lang, setLang, formLang, setFormLang }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );
