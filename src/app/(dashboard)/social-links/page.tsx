@@ -1,16 +1,62 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { DataTable } from "@/components/shared/DataTable";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DeleteConfirmModal } from "@/components/shared/DeleteConfirmModal";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Search,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
+  ExternalLink,
+  Globe,
+  Link2,
+  ListOrdered,
+} from "lucide-react";
 import { formatDate, truncate } from "@/lib/utils";
 import api from "@/lib/api";
 import { type SocialLink } from "@/types";
-import { type ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
+
+const ITEMS_PER_PAGE = 6;
+
+const PLATFORM_COLORS: Record<string, string> = {
+  telegram: "bg-sky-500",
+  instagram: "bg-pink-500",
+  facebook: "bg-blue-600",
+  youtube: "bg-red-500",
+  twitter: "bg-sky-400",
+  linkedin: "bg-blue-700",
+  tiktok: "bg-black",
+  whatsapp: "bg-emerald-500",
+  github: "bg-gray-800",
+  discord: "bg-indigo-500",
+  snapchat: "bg-yellow-400",
+  pinterest: "bg-red-600",
+  reddit: "bg-orange-600",
+  twitch: "bg-purple-600",
+  medium: "bg-gray-900",
+  vk: "bg-blue-500",
+  ok: "bg-orange-500",
+};
+
+function getPlatformColor(platform: string): string {
+  return PLATFORM_COLORS[platform.toLowerCase().replace(/\s+/g, "")] || "bg-primary";
+}
 
 export default function SocialLinksPage() {
   const router = useRouter();
@@ -18,60 +64,581 @@ export default function SocialLinksPage() {
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<string>("order");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
   const fetchData = async () => {
     try {
       const res = await api.get("/api/social-links");
       setData(res.data.data || []);
-    } catch { toast.error("Yuklashda xatolik"); }
-    finally { setLoading(false); }
+    } catch {
+      toast.error("Ma'lumotlarni yuklashda xatolik");
+    } finally {
+      setLoading(false);
+    }
   };
-  useEffect(() => { fetchData(); }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleDelete = async () => {
     if (!deleteId) return;
     setDeleteLoading(true);
     try {
       await api.delete(`/api/social-links/${deleteId}`);
-      toast.success("O'chirildi");
+      toast.success("Ijtimoiy tarmoq o'chirildi");
       fetchData();
-    } catch { toast.error("O'chirishda xatolik"); }
-    finally { setDeleteLoading(false); setDeleteId(null); }
+    } catch {
+      toast.error("O'chirishda xatolik");
+    } finally {
+      setDeleteLoading(false);
+      setDeleteId(null);
+    }
   };
 
-  const columns: ColumnDef<SocialLink>[] = [
-    { accessorKey: "platform", header: "Platforma" },
-    { accessorKey: "url", header: "URL", cell: ({ row }) => truncate(row.original.url, 50) },
-    { accessorKey: "order", header: "Tartib" },
-    { accessorKey: "created_at", header: "Sana", cell: ({ row }) => formatDate(row.original.created_at) },
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <div className="flex gap-2">
-          <Button variant="ghost" size="icon" onClick={() => router.push(`/social-links/${row.original.id}/edit`)}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => setDeleteId(row.original.id)}>
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+  const stats = useMemo(() => {
+    const total = data.length;
+    const avgOrder =
+      total > 0
+        ? (data.reduce((sum, d) => sum + (d.order || 0), 0) / total).toFixed(1)
+        : "0";
+    return { total, avgOrder };
+  }, [data]);
+
+  const filtered = useMemo(() => {
+    let result = [...data];
+
+    if (searchTerm) {
+      const s = searchTerm.toLowerCase();
+      result = result.filter(
+        (sl) =>
+          sl.platform?.toLowerCase().includes(s) ||
+          sl.url?.toLowerCase().includes(s)
+      );
+    }
+
+    switch (sortBy) {
+      case "order":
+        result.sort((a, b) => (a.order || 0) - (b.order || 0));
+        break;
+      case "newest":
+        result.sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        break;
+      case "alphabet":
+        result.sort((a, b) =>
+          (a.platform || "").toLowerCase().localeCompare(
+            (b.platform || "").toLowerCase()
+          )
+        );
+        break;
+    }
+
+    return result;
+  }, [data, searchTerm, sortBy]);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginated = filtered.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortBy]);
+
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-9 w-56 animate-pulse rounded-lg bg-muted" />
+            <div className="mt-2 h-5 w-40 animate-pulse rounded-md bg-muted" />
+          </div>
+          <div className="h-10 w-40 animate-pulse rounded-lg bg-muted" />
         </div>
-      ),
-    },
-  ];
+        <div className="grid gap-4 sm:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted" />
+          ))}
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-64 animate-pulse rounded-2xl bg-muted" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-8 max-w-[1400px] mx-auto">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Ijtimoiy tarmoqlar</h1>
-          <p className="text-muted-foreground mt-1">Ijtimoiy tarmoq havolalari</p>
+          <h1 className="text-3xl font-bold tracking-tight gradient-text">Ijtimoiy tarmoqlar</h1>
+          <p className="text-muted-foreground mt-1">
+            Barcha ijtimoiy tarmoq havolalari
+          </p>
         </div>
-        <Button onClick={() => router.push("/social-links/create")}>
-          <Plus className="mr-2 h-4 w-4" /> Yangi qo'shish
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="flex rounded-xl border bg-muted/50 p-1">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                viewMode === "grid"
+                  ? "bg-background shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <div className="flex items-center gap-1.5">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <rect x="0.5" y="0.5" width="5" height="5" rx="1" stroke="currentColor" />
+                  <rect x="8.5" y="0.5" width="5" height="5" rx="1" stroke="currentColor" />
+                  <rect x="0.5" y="8.5" width="5" height="5" rx="1" stroke="currentColor" />
+                  <rect x="8.5" y="8.5" width="5" height="5" rx="1" stroke="currentColor" />
+                </svg>
+                Kartochka
+              </div>
+            </button>
+            <button
+              onClick={() => setViewMode("table")}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                viewMode === "table"
+                  ? "bg-background shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <div className="flex items-center gap-1.5">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <rect x="0.5" y="0.5" width="13" height="3" rx="1" stroke="currentColor" />
+                  <rect x="0.5" y="5.5" width="13" height="3" rx="1" stroke="currentColor" />
+                  <rect x="0.5" y="10.5" width="13" height="3" rx="1" stroke="currentColor" />
+                </svg>
+                Jadval
+              </div>
+            </button>
+          </div>
+          <Button onClick={() => router.push("/social-links/create")} className="btn-3d gap-2">
+            <Plus className="h-4 w-4" />
+            Yangi qo&apos;shish
+          </Button>
+        </div>
       </div>
-      <DataTable columns={columns} data={data} searchKey="platform" searchPlaceholder="Platforma bo'yicha qidirish..." isLoading={loading} />
-      <DeleteConfirmModal open={!!deleteId} onOpenChange={(o) => { if (!o) setDeleteId(null); }} onConfirm={handleDelete} isLoading={deleteLoading} />
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="card-3d">
+          <div className="card-3d-inner glass-card card-shine rounded-2xl p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Jami havolalar
+                </p>
+                <p className="text-3xl font-bold mt-1 tracking-tight">{stats.total}</p>
+              </div>
+              <div className="icon-3d rounded-xl p-2.5">
+                <Link2 className="h-5 w-5 text-primary-foreground" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
+              <Globe className="h-3 w-3" />
+              <span>Barcha platformalar</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="card-3d">
+          <div className="card-3d-inner glass-card card-shine rounded-2xl p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  O&apos;rtacha tartib
+                </p>
+                <p className="text-3xl font-bold mt-1 text-violet-500 tracking-tight">
+                  {stats.avgOrder}
+                </p>
+              </div>
+              <div className="rounded-xl p-2.5 bg-violet-100 dark:bg-violet-900/30">
+                <ListOrdered className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
+              <ArrowUpDown className="h-3 w-3" />
+              <span>Tartib raqamlari asosida</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters Bar */}
+      <div className="card-3d">
+        <div className="card-3d-inner glass-card rounded-2xl p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Platforma yoki URL bo&apos;yicha qidirish..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 bg-background/50"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-[150px] bg-background/50">
+                  <SelectValue placeholder="Saralash" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="order">Tartib</SelectItem>
+                  <SelectItem value="newest">Eng yangi</SelectItem>
+                  <SelectItem value="alphabet">Alifbo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Grid View */}
+      {viewMode === "grid" && (
+        <>
+          {paginated.length === 0 ? (
+            <div className="card-3d">
+              <div className="card-3d-inner glass-card rounded-2xl p-16 text-center">
+                <div className="icon-3d rounded-2xl p-4 mx-auto w-fit mb-4">
+                  <Link2 className="h-8 w-8 text-primary-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-1">Hech narsa topilmadi</h3>
+                <p className="text-sm text-muted-foreground">
+                  Qidiruv so&apos;rovi yoki filtrlarga mos havola yo&apos;q
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {paginated.map((item, idx) => {
+                const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + idx + 1;
+                const platformColor = getPlatformColor(item.platform);
+                return (
+                  <div key={item.id} className="card-3d group">
+                    <div className="card-3d-inner glass-card card-shine rounded-2xl overflow-hidden flex flex-col h-full">
+                      {/* Platform Icon Header */}
+                      <div className="relative h-44 overflow-hidden bg-muted flex items-center justify-center">
+                        <div className="absolute inset-0 bg-gradient-to-br from-background/80 via-muted/50 to-background/80" />
+                        <div
+                          className={`${platformColor} w-24 h-24 rounded-3xl flex items-center justify-center shadow-xl transform transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 z-10`}
+                        >
+                          <span className="text-white text-4xl font-extrabold uppercase tracking-tight">
+                            {item.platform?.charAt(0)}
+                          </span>
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                        {/* Number Badge */}
+                        <div className="absolute top-3 left-3 icon-3d rounded-lg px-2.5 py-1 text-xs font-bold text-primary-foreground">
+                          #{globalIndex}
+                        </div>
+                        {/* Order Badge */}
+                        <div className="absolute top-3 right-3">
+                          <Badge className="text-[10px] px-2 py-0.5 bg-white/20 text-white border-0 backdrop-blur-sm">
+                            Tartib: {item.order}
+                          </Badge>
+                        </div>
+                        {/* Bottom date */}
+                        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-white/90 text-xs">
+                            <Calendar className="h-3 w-3" />
+                            {formatDate(item.created_at)}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-white/90 text-xs">
+                            <Globe className="h-3 w-3" />
+                            {item.platform}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-4 flex-1 flex flex-col">
+                        <h3 className="font-semibold text-sm leading-snug capitalize mb-2">
+                          {item.platform}
+                        </h3>
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-muted-foreground truncate hover:text-primary transition-colors flex items-center gap-1 mb-3"
+                          title={item.url}
+                        >
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{item.url}</span>
+                        </a>
+
+                        <div className="mt-auto flex items-center justify-between pt-3 border-t border-border/50">
+                          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                            ID: {item.id}
+                          </span>
+                          <div className="flex gap-0.5">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-primary/10"
+                              onClick={() => router.push(`/social-links/${item.id}/edit`)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() => setDeleteId(item.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Table View */}
+      {viewMode === "table" && (
+        <div className="card-3d">
+          <div className="card-3d-inner glass-card rounded-2xl overflow-hidden">
+            {paginated.length === 0 ? (
+              <div className="p-16 text-center">
+                <div className="icon-3d rounded-2xl p-4 mx-auto w-fit mb-4">
+                  <Link2 className="h-8 w-8 text-primary-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-1">Hech narsa topilmadi</h3>
+                <p className="text-sm text-muted-foreground">
+                  Qidiruv so&apos;rovi yoki filtrlarga mos havola yo&apos;q
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border/50 bg-muted/30">
+                      <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-12">
+                        #
+                      </th>
+                      <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Platforma
+                      </th>
+                      <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        URL
+                      </th>
+                      <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">
+                        Tartib
+                      </th>
+                      <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-28">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          Sana
+                        </div>
+                      </th>
+                      <th className="text-right px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-32">
+                        Amallar
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginated.map((item, idx) => {
+                      const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + idx + 1;
+                      const platformColor = getPlatformColor(item.platform);
+                      return (
+                        <tr
+                          key={item.id}
+                          className="border-b border-border/30 hover:bg-muted/20 transition-colors"
+                        >
+                          {/* # */}
+                          <td className="px-5 py-3.5">
+                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10 text-xs font-bold text-primary">
+                              {globalIndex}
+                            </span>
+                          </td>
+                          {/* Platforma */}
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${platformColor} shadow-sm`}
+                              >
+                                <span className="text-white text-lg font-bold uppercase">
+                                  {item.platform?.charAt(0)}
+                                </span>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm capitalize">
+                                  {item.platform}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[200px]">
+                                  {item.url}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          {/* URL */}
+                          <td className="px-5 py-3.5">
+                            <a
+                              href={item.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-muted-foreground hover:text-primary transition-colors truncate max-w-[240px] inline-block"
+                              title={item.url}
+                            >
+                              {item.url}
+                            </a>
+                          </td>
+                          {/* Tartib */}
+                          <td className="px-5 py-3.5">
+                            <span className="inline-flex items-center justify-center min-w-[32px] h-7 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-xs font-bold text-violet-700 dark:text-violet-300 px-2">
+                              {item.order}
+                            </span>
+                          </td>
+                          {/* Sana */}
+                          <td className="px-5 py-3.5">
+                            <span className="text-sm text-muted-foreground">
+                              {formatDate(item.created_at)}
+                            </span>
+                          </td>
+                          {/* Amallar */}
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center justify-end gap-1">
+                              <a
+                                href={item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 hover:bg-primary/10"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </Button>
+                              </a>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-primary/10"
+                                onClick={() => router.push(`/social-links/${item.id}/edit`)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => setDeleteId(item.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Jami <span className="font-medium text-foreground">{filtered.length}</span> ta yozuv,{" "}
+            <span className="font-medium text-foreground">{currentPage}</span>/
+            {totalPages} sahifa
+          </p>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="h-9 w-9 p-0"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4 -ml-2" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="h-9 w-9 p-0"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              let pageNum: number;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+              return (
+                <Button
+                  key={pageNum}
+                  variant={pageNum === currentPage ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(pageNum)}
+                  className="h-9 w-9 p-0 font-medium"
+                >
+                  {pageNum}
+                </Button>
+              );
+            })}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="h-9 w-9 p-0"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+              className="h-9 w-9 p-0"
+            >
+              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4 -ml-2" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <DeleteConfirmModal
+        open={!!deleteId}
+        onOpenChange={(o) => {
+          if (!o) setDeleteId(null);
+        }}
+        onConfirm={handleDelete}
+        isLoading={deleteLoading}
+      />
     </div>
   );
 }
