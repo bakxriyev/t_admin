@@ -248,6 +248,14 @@ export interface Hero {
   image?: string;
   order: number;
   is_active: boolean;
+  title_font_size?: string;
+  subtitle_font_size?: string;
+  description_font_size?: string;
+  title_font_weight?: string;
+  subtitle_font_weight?: string;
+  description_font_weight?: string;
+  text_align?: string;
+  max_width?: string;
   created_at: string;
   updated_at: string;
 }

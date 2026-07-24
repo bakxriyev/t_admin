@@ -145,6 +145,14 @@ export const heroSchema = z.object({
   image: z.any().optional(),
   order: z.number().optional(),
   is_active: z.boolean().optional(),
+  title_font_size: z.string().optional(),
+  subtitle_font_size: z.string().optional(),
+  description_font_size: z.string().optional(),
+  title_font_weight: z.string().optional(),
+  subtitle_font_weight: z.string().optional(),
+  description_font_weight: z.string().optional(),
+  text_align: z.string().optional(),
+  max_width: z.string().optional(),
 });
 
 export const statisticSchema = z.object({

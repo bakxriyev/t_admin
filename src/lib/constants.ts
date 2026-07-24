@@ -72,15 +72,27 @@ export const vacancyTypeOptions = [
 ];
 
 export const heroFields = [
-  { name: "title", label: "Sarlavha", type: "multilang" as const, placeholder: "Sarlavha" },
-  { name: "subtitle", label: "Subtitr (kursiv)", type: "multilang" as const, placeholder: "Subtitr" },
+  { name: "title", label: "Sarlavha", type: "multilang" as const, placeholder: "Asosiy sarlavha" },
+  { name: "subtitle", label: "Subtitr (kursiv)", type: "multilang" as const, placeholder: "Subtitr matni" },
   { name: "description", label: "Asosiy matn", type: "multilang-textarea" as const, placeholder: "Asosiy tavsif matni" },
   { name: "button_text", label: "Tugma matni", type: "multilang" as const, placeholder: "Ro'yxatdan o'tish" },
-  { name: "button_link", label: "Tugma URL", type: "url" as const, placeholder: "https://" },
+  { name: "button_link", label: "Tugma URL", type: "url" as const, placeholder: "https://..." },
   { name: "video_url", label: "Video URL", type: "url" as const, placeholder: "https://youtube.com/..." },
   { name: "image", label: "Rasm", type: "file" as const },
   { name: "order", label: "Tartib", type: "number" as const },
   { name: "is_active", label: "Faol", type: "boolean" as const },
+  { name: "title_font_size", label: "Sarlavha shrifti (masalan: 4.5rem)", type: "text" as const, placeholder: "4.5rem" },
+  { name: "subtitle_font_size", label: "Subtitr shrifti (masalan: 1.125rem)", type: "text" as const, placeholder: "1.125rem" },
+  { name: "description_font_size", label: "Matn shrifti (masalan: 1rem)", type: "text" as const, placeholder: "1rem" },
+  { name: "title_font_weight", label: "Sarlavha qalinligi (100-900)", type: "text" as const, placeholder: "700" },
+  { name: "subtitle_font_weight", label: "Subtitr qalinligi (100-900)", type: "text" as const, placeholder: "400" },
+  { name: "description_font_weight", label: "Matn qalinligi (100-900)", type: "text" as const, placeholder: "400" },
+  { name: "text_align", label: "Matn joylashuvi", type: "select" as const, options: [
+    { value: "left", label: "Chapga" },
+    { value: "center", label: "O'rtaga" },
+    { value: "right", label: "O'ngga" },
+  ]},
+  { name: "max_width", label: "Maksimal kenglik (masalan: 800px)", type: "text" as const, placeholder: "100%" },
 ];
 
 export const courseOfferFields = [
