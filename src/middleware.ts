@@ -25,6 +25,7 @@ const HOP_BY_HOP_HEADERS = [
   "trailers",
   "transfer-encoding",
   "upgrade",
+  "content-length",
 ];
 
 function isNextAuthRoute(pathname: string): boolean {
@@ -48,27 +49,26 @@ async function proxyToBackend(req: NextRequest): Promise<NextResponse> {
   });
 
   try {
-    const body = req.method !== "GET" && req.method !== "HEAD"
-      ? await req.text()
-      : undefined;
+    const body = req.method !== "GET" && req.method !== "HEAD" && req.body
+      ? req.body
+      : null;
 
     const proxyRes = await fetch(backendUrl, {
       method: req.method,
       headers,
-      body: body || undefined,
-      redirect: "manual",
+      body: body as BodyInit | null,
+      // @ts-ignore — duplex is required when body is a ReadableStream
+      duplex: "half",
     });
 
     const responseHeaders = new Headers();
     proxyRes.headers.forEach((value, key) => {
-      if (!HOP_BY_HOP_HEADERS.includes(key.toLowerCase())) {
+      if (!["connection", "keep-alive", "transfer-encoding"].includes(key.toLowerCase())) {
         responseHeaders.set(key, value);
       }
     });
 
-    const resBody = await proxyRes.text();
-
-    return new NextResponse(resBody, {
+    return new NextResponse(proxyRes.body, {
       status: proxyRes.status,
       statusText: proxyRes.statusText,
       headers: responseHeaders,
