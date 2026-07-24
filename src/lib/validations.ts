@@ -160,6 +160,8 @@ export const statisticSchema = z.object({
   label_ru: z.string().min(1, "Label (RU) обязателен"),
   label_en: z.string().min(1, "Label (EN) is required"),
   value: z.number().min(0),
+  suffix: z.string().optional(),
+  icon: z.string().optional(),
   order: z.number().optional(),
   is_active: z.boolean().optional(),
 });

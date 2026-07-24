@@ -47,6 +47,15 @@ export const navigationItems: NavItem[] = [
   { title: "Analitika", href: "/analytics", icon: Activity },
 ];
 
+export const statisticFields = [
+  { name: "label", label: "Nomi", type: "multilang" as const, placeholder: "Talabalar / Students" },
+  { name: "value", label: "Qiymat (son)", type: "number" as const, placeholder: "1500" },
+  { name: "suffix", label: "Qo'shimcha (+, %, x)", type: "text" as const, placeholder: "+" },
+  { name: "icon", label: "Ikonka (lucide)", type: "text" as const, placeholder: "Users" },
+  { name: "order", label: "Tartib", type: "number" as const },
+  { name: "is_active", label: "Faol", type: "boolean" as const },
+];
+
 export const newsTypeOptions = [
   { value: "news", label: "Yangilik" },
   { value: "article", label: "Maqola" },
