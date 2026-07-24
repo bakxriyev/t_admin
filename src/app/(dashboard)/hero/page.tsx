@@ -51,7 +51,7 @@ export default function HeroPage() {
 
   const fetchData = async () => {
     try {
-      const res = await api.get("/api/heroes");
+      const res = await api.get("/api/hero");
       setData(res.data.data || []);
     } catch {
       toast.error("Ma'lumotlarni yuklashda xatolik");
@@ -68,7 +68,7 @@ export default function HeroPage() {
     if (!deleteId) return;
     setDeleteLoading(true);
     try {
-      await api.delete(`/api/heroes/${deleteId}`);
+      await api.delete(`/api/hero/${deleteId}`);
       toast.success("Slayder o'chirildi");
       fetchData();
     } catch {

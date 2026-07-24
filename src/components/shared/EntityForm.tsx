@@ -25,8 +25,7 @@ import { LanguageTabs } from "./LanguageTabs";
 import { FormLanguageSwitcher } from "./FormLanguageSwitcher";
 import { ImageUpload } from "./ImageUpload";
 import { VideoUpload } from "./VideoUpload";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Save, Copy } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Copy, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { type ZodSchema } from "zod";
@@ -69,6 +68,7 @@ export function EntityForm({
   const [pageLoading, setPageLoading] = useState(isEdit);
   const [fileValues, setFileValues] = useState<Record<string, File | null>>({});
   const initialDataRef = useRef<any>(null);
+  const [initialImage, setInitialImage] = useState<Record<string, string | null>>({});
 
   const [missingFields, setMissingFields] = useState<{ label: string; filledLang: string; emptyLangs: string[] }[]>([]);
   const [showLangDialog, setShowLangDialog] = useState(false);
@@ -88,15 +88,23 @@ export function EntityForm({
           const data = res.data.data || res.data;
           initialDataRef.current = data;
           const formData: any = {};
+          const imgs: Record<string, string | null> = {};
           fields.forEach((f) => {
             if (f.type === "multilang" || f.type === "multilang-textarea") {
               MULTILANG_SUFFIXES.forEach((suffix) => {
                 formData[`${f.name}${suffix}`] = data[`${f.name}${suffix}`] ?? "";
               });
-            } else if (f.type !== "file") {
-              formData[f.name] = data[f.name] ?? "";
+            } else if (f.type === "file") {
+              imgs[f.name] = data[f.name] || null;
+            } else if (f.type === "select") {
+              formData[f.name] = data[f.name] ?? (f.options?.[0]?.value || "");
+            } else if (f.type === "boolean") {
+              formData[f.name] = data[f.name] ?? true;
+            } else {
+              formData[f.name] = data[f.name] ?? (f.type === "number" ? 0 : "");
             }
           });
+          setInitialImage(imgs);
           reset(formData);
         } catch {
           toast.error("Ma'lumotni yuklashda xatolik");
@@ -153,7 +161,7 @@ export function EntityForm({
       if (hasFile) {
         const formData = new FormData();
         Object.entries(data).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
+          if (value !== undefined && value !== null && value !== "") {
             formData.append(key, String(value));
           }
         });
@@ -171,10 +179,14 @@ export function EntityForm({
           });
         }
       } else {
+        const cleanData = { ...data };
+        Object.keys(cleanData).forEach((key) => {
+          if (cleanData[key] === "" && key !== "is_active") cleanData[key] = undefined;
+        });
         if (isEdit && params?.id) {
-          res = await api.put(`${apiEndpoint}/${params.id}`, data);
+          res = await api.put(`${apiEndpoint}/${params.id}`, cleanData);
         } else {
-          res = await api.post(apiEndpoint, data);
+          res = await api.post(apiEndpoint, cleanData);
         }
       }
 
@@ -220,166 +232,279 @@ export function EntityForm({
     await doSubmit(data);
   };
 
+  const requiredMultilangFields = fields.filter(
+    (f) => (f.type === "multilang" || f.type === "multilang-textarea")
+  );
+  const requiredSimpleFields = fields.filter(
+    (f) => f.type !== "multilang" && f.type !== "multilang-textarea" && f.type !== "file" && f.type !== "boolean"
+  );
+  const fileFields = fields.filter((f) => f.type === "file");
+  const booleanFields = fields.filter((f) => f.type === "boolean");
+
   if (pageLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="relative">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="h-5 w-5 text-primary animate-pulse" />
+          </div>
+        </div>
       </div>
     );
   }
 
-  const renderField = (field: FieldConfig) => {
-    const err = (errors as any)[field.name];
+  const currentTitle = isEdit ? editTitle : title;
 
+  const renderField = (field: FieldConfig) => {
     if (field.type === "multilang" || field.type === "multilang-textarea") {
       const isTextarea = field.type === "multilang-textarea";
       return (
-        <LanguageTabs key={field.name}>
-          {(lang) => (
-            <div className="space-y-2">
-              <Label>{field.label} ({LANG_LABELS[lang]})</Label>
-              {isTextarea ? (
-                <Textarea {...register(`${field.name}_${lang}`)} rows={5} placeholder={`${field.placeholder || ""}`} />
-              ) : (
-                <Input {...register(`${field.name}_${lang}`)} placeholder={`${field.placeholder || ""}`} />
-              )}
-              {(errors as any)[`${field.name}_${lang}`] && (
-                <p className="text-sm text-destructive">{(errors as any)[`${field.name}_${lang}`]?.message}</p>
+        <div key={field.name} className="card-3d">
+          <div className="card-3d-inner glass-card card-shine rounded-2xl p-5 md:p-7 space-y-5">
+            <div className="flex items-center gap-3">
+              <span className="icon-3d rounded-lg p-1.5 shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 8l6 6"/><path d="M13 14l6-6"/><path d="M4 4h16v16H4z"/></svg>
+              </span>
+              <div>
+                <h3 className="font-semibold text-base">{field.label}</h3>
+                <p className="text-xs text-muted-foreground">Barcha tillarda to'ldiring (O'zbek, Русский, English)</p>
+              </div>
+              {field.required !== false && (
+                <span className="ml-auto text-xs text-destructive font-medium bg-destructive/10 px-2 py-0.5 rounded-full">Majburiy</span>
               )}
             </div>
-          )}
-        </LanguageTabs>
+            <LanguageTabs>
+              {(lang) => (
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground text-sm">
+                    {field.label} ({LANG_LABELS[lang]})
+                  </Label>
+                  {isTextarea ? (
+                    <Textarea
+                      {...register(`${field.name}_${lang}`)}
+                      rows={5}
+                      placeholder={`${field.placeholder || field.label} (${LANG_LABELS[lang]})`}
+                      className="bg-background/50 resize-y min-h-[100px]"
+                    />
+                  ) : (
+                    <Input
+                      {...register(`${field.name}_${lang}`)}
+                      placeholder={`${field.placeholder || field.label} (${LANG_LABELS[lang]})`}
+                      className="bg-background/50"
+                    />
+                  )}
+                  {(errors as any)[`${field.name}_${lang}`] && (
+                    <p className="text-sm text-destructive flex items-center gap-1.5">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      {(errors as any)[`${field.name}_${lang}`]?.message}
+                    </p>
+                  )}
+                </div>
+              )}
+            </LanguageTabs>
+          </div>
+        </div>
       );
     }
 
     if (field.type === "select") {
+      const err = (errors as any)[field.name];
       return (
         <div className="space-y-2" key={field.name}>
-          <Label>{field.label}</Label>
+          <Label className="text-muted-foreground text-sm">{field.label}</Label>
           <Select value={watch(field.name)} onValueChange={(v) => setValue(field.name, v)}>
-            <SelectTrigger><SelectValue placeholder={field.placeholder} /></SelectTrigger>
+            <SelectTrigger className="bg-background/50">
+              <SelectValue placeholder={field.placeholder} />
+            </SelectTrigger>
             <SelectContent>
               {field.options?.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          {err && <p className="text-sm text-destructive">{err.message}</p>}
+          {err && <p className="text-sm text-destructive flex items-center gap-1.5"><AlertCircle className="h-3.5 w-3.5" />{err.message}</p>}
         </div>
       );
     }
 
     if (field.type === "file") {
-      const existingUrl = isEdit && initialDataRef.current ? initialDataRef.current[field.name] : null;
+      const existingUrl = initialImage[field.name] || (initialDataRef.current ? initialDataRef.current[field.name] : null);
       const isVideo = field.name === "video";
       return (
         <div className="space-y-2" key={field.name}>
-          <Label>{field.label}</Label>
-          {isVideo ? (
-            <VideoUpload
-              value={existingUrl}
-              onChange={(file) => handleFileChange(field.name, file)}
-            />
-          ) : (
-            <ImageUpload
-              value={existingUrl}
-              onChange={(file) => handleFileChange(field.name, file)}
-            />
-          )}
+          <Label className="text-muted-foreground text-sm">{field.label}</Label>
+          <div className="glass-card rounded-xl p-3 flex items-center justify-center min-h-[140px]">
+            {isVideo ? (
+              <VideoUpload
+                value={existingUrl}
+                onChange={(file) => handleFileChange(field.name, file)}
+              />
+            ) : (
+              <ImageUpload
+                value={existingUrl}
+                onChange={(file) => handleFileChange(field.name, file)}
+              />
+            )}
+          </div>
         </div>
       );
     }
 
     if (field.type === "boolean") {
       return (
-        <div className="flex items-center gap-2" key={field.name}>
-          <input
-            type="checkbox"
-            {...register(field.name)}
-            className="h-4 w-4 rounded border-gray-300"
-          />
-          <Label className="mb-0">{field.label}</Label>
-        </div>
+        <label key={field.name} className="flex items-center gap-3 cursor-pointer select-none">
+          <div className="relative">
+            <input
+              type="checkbox"
+              {...register(field.name)}
+              className="peer sr-only"
+            />
+            <div className="h-6 w-11 rounded-full bg-muted peer-checked:bg-primary transition-colors" />
+            <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5" />
+          </div>
+          <span className="text-sm font-medium">{field.label}</span>
+        </label>
       );
     }
 
-    const inputType = field.type === "number" ? "number" : field.type === "email" ? "email" : "text";
+    const inputType = field.type === "number" ? "number" : field.type === "email" ? "email" : field.type === "url" ? "url" : "text";
+    const err = (errors as any)[field.name];
     return (
       <div className="space-y-2" key={field.name}>
-        <Label>{field.label}</Label>
+        <Label className="text-muted-foreground text-sm">{field.label}</Label>
         <Input
           type={inputType}
           {...register(field.name, field.type === "number" ? { valueAsNumber: true } : undefined)}
           placeholder={field.placeholder}
+          className="bg-background/50"
         />
-        {err && <p className="text-sm text-destructive">{err.message}</p>}
+        {err && <p className="text-sm text-destructive flex items-center gap-1.5"><AlertCircle className="h-3.5 w-3.5" />{err.message}</p>}
       </div>
     );
   };
 
-  const currentTitle = isEdit ? editTitle : title;
-
   return (
-    <div className="space-y-6">
+    <div className="max-w-5xl mx-auto space-y-8">
+      {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.push(redirectPath)}>
-          <ArrowLeft className="h-5 w-5" />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.push(redirectPath)}
+          className="icon-3d rounded-xl p-2 hover:scale-110 transition-transform"
+        >
+          <ArrowLeft className="h-5 w-5 text-primary-foreground" />
         </Button>
-        <h1 className="text-3xl font-bold tracking-tight">{currentTitle}</h1>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight gradient-text">{currentTitle}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {isEdit ? "Mavjud yozuvni tahrirlash" : "Yangi yozuv qo'shish"} — barcha tillarda to'ldiring
+          </p>
+        </div>
       </div>
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         <div className="flex justify-end">
           <FormLanguageSwitcher />
         </div>
-        <Card>
-          <CardHeader><CardTitle>{currentTitle}</CardTitle></CardHeader>
-          <CardContent className="space-y-6">
-            {fields.map(renderField)}
-          </CardContent>
-        </Card>
-        <div className="flex gap-4">
-          <Button type="submit" disabled={isLoading}>
+
+        {/* Multilang fields - each in its own glass card */}
+        {requiredMultilangFields.length > 0 && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold">Asosiy ma'lumotlar</h2>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                {requiredMultilangFields.length} ta ko'p tilli maydon
+              </span>
+            </div>
+            {requiredMultilangFields.map(renderField)}
+          </div>
+        )}
+
+        {/* Simple fields */}
+        {(requiredSimpleFields.length > 0 || fileFields.length > 0 || booleanFields.length > 0) && (
+          <div className="card-3d">
+            <div className="card-3d-inner glass-card card-shine rounded-2xl p-5 md:p-7 space-y-6">
+              <div className="flex items-center gap-3">
+                <span className="icon-3d rounded-lg p-1.5 shrink-0">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+                </span>
+                <div>
+                  <h3 className="font-semibold text-base">Qo'shimcha ma'lumotlar</h3>
+                  <p className="text-xs text-muted-foreground">URL, tartib raqami, rasm va boshqalar</p>
+                </div>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                {requiredSimpleFields.map(renderField)}
+              </div>
+              {fileFields.length > 0 && (
+                <div className="grid gap-5 sm:grid-cols-2">
+                  {fileFields.map(renderField)}
+                </div>
+              )}
+              {booleanFields.length > 0 && (
+                <div className="flex flex-wrap gap-6 pt-2 border-t border-border/30">
+                  {booleanFields.map(renderField)}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="flex gap-3 pt-2">
+          <Button type="submit" disabled={isLoading} className="btn-3d px-8 gap-2">
             {isLoading ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saqlanmoqda...</>
+              <><Loader2 className="h-4 w-4 animate-spin" /> Saqlanmoqda...</>
             ) : (
-              <><Save className="mr-2 h-4 w-4" /> Saqlash</>
+              <><Save className="h-4 w-4" /> Saqlash</>
             )}
           </Button>
-          <Button variant="outline" type="button" onClick={() => router.push(redirectPath)}>Bekor qilish</Button>
+          <Button variant="outline" type="button" onClick={() => router.push(redirectPath)} className="gap-2">
+            Bekor qilish
+          </Button>
         </div>
       </form>
 
+      {/* Multi-language auto-fill dialog */}
       <AlertDialog open={showLangDialog} onOpenChange={setShowLangDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="glass-card rounded-2xl border-border/30">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Copy className="h-5 w-5 text-primary" />
-              Ko'p tilli maydonlar
+            <AlertDialogTitle className="flex items-center gap-2 text-foreground">
+              <div className="icon-3d rounded-lg p-1.5">
+                <Copy className="h-4 w-4 text-primary-foreground" />
+              </div>
+              Ko'p tilli maydonlarni to'ldirish
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>Quyidagi maydonlar barcha tillarda to'ldirilmagan:</p>
-              <ul className="list-disc pl-5 space-y-1">
+            <AlertDialogDescription className="space-y-3 text-muted-foreground">
+              <p>Quyidagi maydonlar barcha tillarda to'ldirilmagan. Bitta tildagi ma'lumotni qolgan tillarga nusxalashni xohlaysizmi?</p>
+              <div className="space-y-2 mt-3">
                 {missingFields.map((mf, i) => (
-                  <li key={i} className="text-sm">
-                    <strong>{mf.label}</strong> —{" "}
-                    <span className="text-muted-foreground">
-                      {LANG_LABELS[mf.filledLang]} to'ldirilgan,{" "}
-                      {mf.emptyLangs.map((l) => LANG_LABELS[l]).join(", ")} bo'sh
-                    </span>
-                  </li>
+                  <div key={i} className="glass-card rounded-xl p-3 text-sm">
+                    <p className="font-medium text-foreground mb-1">{mf.label}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md text-xs font-medium">
+                        {LANG_LABELS[mf.filledLang]} ✓
+                      </span>
+                      <span className="text-muted-foreground">→</span>
+                      {mf.emptyLangs.map((l) => (
+                        <span key={l} className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-md text-xs">
+                          {LANG_LABELS[l]}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 ))}
-              </ul>
-              <p className="text-sm font-medium text-foreground">
-                Bitta tilda kiritilgan ma'lumotni qolgan tillarga avtomatik nusxalashni xohlaysizmi?
-              </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowLangDialog(false)}>
-              Yo'q, men o'zim to'ldiraman
+            <AlertDialogCancel onClick={() => setShowLangDialog(false)} className="gap-2">
+              Yo'q, o'zim to'ldiraman
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleAutoFill}>
-              Ha, nusxalash
+            <AlertDialogAction onClick={handleAutoFill} className="btn-3d gap-2">
+              <Copy className="h-4 w-4" /> Ha, nusxalash
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
