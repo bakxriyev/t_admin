@@ -1,8 +1,10 @@
 import axios from "axios";
 import { signOut } from "next-auth/react";
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "https://tashkentlaw.ilmify-edu.uz";
+
 const api = axios.create({
-  baseURL: "",
+  baseURL: BACKEND_URL,
   headers: {
     "Content-Type": "application/json",
   },

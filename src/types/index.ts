@@ -222,6 +222,7 @@ export interface Statistic {
   label_ru: string;
   label_en: string;
   value: number;
+  suffix?: string;
   icon?: string;
   order: number;
   is_active: boolean;

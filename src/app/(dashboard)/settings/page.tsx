@@ -13,7 +13,7 @@ import { DeleteConfirmModal } from "@/components/shared/DeleteConfirmModal";
 import { FormLanguageSwitcher } from "@/components/shared/FormLanguageSwitcher";
 import { useLanguage } from "@/providers/LanguageProvider";
 import {
-  Loader2, Save, Plus, Trash2, Pencil, Globe, Phone, MapPin, Image, Settings2,
+  Loader2, Save, Plus, Trash2, Pencil, Globe, Phone, MapPin, Settings2, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
@@ -34,6 +34,10 @@ const settingsSchema = z.object({
 });
 
 type SettingsFormData = z.infer<typeof settingsSchema>;
+
+function LangLabel({ l }: { l: string }) {
+  return l === "uz" ? "O'zbek" : l === "ru" ? "Русский" : "English";
+}
 
 export default function SettingsPage() {
   const { formLang } = useLanguage();
@@ -147,7 +151,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight gradient-text">Sozlamalar</h1>
@@ -155,61 +159,50 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        <div className="flex justify-end">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div />
           <FormLanguageSwitcher />
         </div>
-        <div className="grid gap-6 md:grid-cols-3">
-          {/* Sayt nomi */}
-          <div className="md:col-span-2 card-3d">
-            <div className="card-3d-inner glass-card card-shine rounded-2xl p-6 md:p-8 space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="icon-3d rounded-xl p-2.5 shrink-0">
-                  <Globe className="h-5 w-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold">Sayt nomi</h3>
-                  <p className="text-sm text-muted-foreground">Tilni tanlang va kiriting</p>
-                </div>
-              </div>
-              {["uz", "ru", "en"].map((l) => (
-                <div key={l} className="space-y-2" style={{ display: l === formLang ? "block" : "none" }}>
-                  <Label className="text-muted-foreground">Sayt nomi ({l === "uz" ? "O'zbek" : l === "ru" ? "Русский" : "English"})</Label>
-                  <Input
-                    {...register(`site_name_${l}` as any)}
-                    className="bg-background/50"
-                    placeholder="Sayt nomi"
-                  />
-                  {(errors as any)[`site_name_${l}`] && (
-                    <p className="text-xs text-destructive">{(errors as any)[`site_name_${l}`]?.message}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Logo va Favicon */}
-          <div className="card-3d">
-            <div className="card-3d-inner glass-card card-shine rounded-2xl p-6 md:p-8 space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="icon-3d rounded-xl p-2.5 shrink-0">
-                  <Image className="h-5 w-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold">Logo & Favicon</h3>
-                  <p className="text-sm text-muted-foreground">Rasm yuklang</p>
-                </div>
+        {/* Sayt nomi + Logo/Favicon */}
+        <div className="card-3d">
+          <div className="card-3d-inner glass-card card-shine rounded-2xl p-6 space-y-6">
+            <div className="flex items-start gap-4">
+              <div className="icon-3d rounded-xl p-2.5 shrink-0">
+                <Globe className="h-5 w-5 text-primary-foreground" />
               </div>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Logo</Label>
-                  <div className="glass-card rounded-xl p-3 flex items-center justify-center min-h-[120px]">
+              <div>
+                <h3 className="text-lg font-semibold">Sayt nomi</h3>
+                <p className="text-sm text-muted-foreground">3 tilda kiriting</p>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="md:col-span-2 grid gap-4">
+                {["uz", "ru", "en"].map((l) => (
+                  <div key={l} className="space-y-1.5" style={{ display: l === formLang ? "block" : "none" }}>
+                    <Label className="text-muted-foreground text-sm"><LangLabel l={l} /></Label>
+                    <Input
+                      {...register(`site_name_${l}` as any)}
+                      className="bg-background/50"
+                      placeholder={`Sayt nomi (${LangLabel({ l })}`}
+                    />
+                    {(errors as any)[`site_name_${l}`] && (
+                      <p className="text-xs text-destructive">{(errors as any)[`site_name_${l}`]?.message}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-4 md:flex-col md:gap-3">
+                <div className="flex-1 space-y-1.5">
+                  <Label className="text-muted-foreground text-sm">Logo</Label>
+                  <div className="glass-card rounded-xl p-2 flex items-center justify-center min-h-[90px]">
                     <ImageUpload value={initialData?.logo} onChange={setLogo} />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Favicon</Label>
-                  <div className="glass-card rounded-xl p-3 flex items-center justify-center min-h-[120px]">
+                <div className="flex-1 space-y-1.5">
+                  <Label className="text-muted-foreground text-sm">Favicon</Label>
+                  <div className="glass-card rounded-xl p-2 flex items-center justify-center min-h-[90px]">
                     <ImageUpload value={initialData?.favicon} onChange={setFavicon} />
                   </div>
                 </div>
@@ -218,22 +211,22 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Kontaktlar */}
+        {/* Kontakt + Manzil */}
         <div className="card-3d">
-          <div className="card-3d-inner glass-card card-shine rounded-2xl p-6 md:p-8 space-y-6">
+          <div className="card-3d-inner glass-card card-shine rounded-2xl p-6 space-y-6">
             <div className="flex items-start gap-4">
               <div className="icon-3d rounded-xl p-2.5 shrink-0">
                 <Phone className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold">Kontaktlar</h3>
-                <p className="text-sm text-muted-foreground">Email, telefon va ish vaqti</p>
+                <p className="text-sm text-muted-foreground">Email, telefon, ish vaqti va manzil</p>
               </div>
             </div>
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="grid gap-5 md:grid-cols-2">
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Email <span className="text-destructive">*</span></Label>
+                <div className="space-y-1.5">
+                  <Label className="text-muted-foreground text-sm">Email</Label>
                   <Input
                     {...register("email")}
                     type="email"
@@ -242,8 +235,8 @@ export default function SettingsPage() {
                   />
                   {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Telefon <span className="text-destructive">*</span></Label>
+                <div className="space-y-1.5">
+                  <Label className="text-muted-foreground text-sm">Telefon</Label>
                   <Input
                     {...register("phone")}
                     className="bg-background/50"
@@ -251,51 +244,42 @@ export default function SettingsPage() {
                   />
                   {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
                 </div>
+                {["uz", "ru", "en"].map((l) => (
+                  <div key={l} className="space-y-1.5" style={{ display: l === formLang ? "block" : "none" }}>
+                    <Label className="text-muted-foreground text-sm flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" /> Ish vaqti (<LangLabel l={l} />)
+                    </Label>
+                    <Input
+                      {...register(`working_hours_${l}` as any)}
+                      className="bg-background/50"
+                      placeholder="Du-Ju 09:00 - 18:00"
+                    />
+                  </div>
+                ))}
               </div>
-              {["uz", "ru", "en"].map((l) => (
-                <div key={l} className="space-y-2" style={{ display: l === formLang ? "block" : "none" }}>
-                  <Label className="text-muted-foreground">Ish vaqti ({l === "uz" ? "O'zbek" : l === "ru" ? "Русский" : "English"})</Label>
-                  <Input
-                    {...register(`working_hours_${l}` as any)}
-                    className="bg-background/50"
-                    placeholder="Du-Ju 09:00 - 18:00"
-                  />
-                </div>
-              ))}
+              <div className="space-y-4">
+                {["uz", "ru", "en"].map((l) => (
+                  <div key={l} className="space-y-1.5" style={{ display: l === formLang ? "block" : "none" }}>
+                    <Label className="text-muted-foreground text-sm flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5" /> Manzil (<LangLabel l={l} />)
+                    </Label>
+                    <Textarea
+                      {...register(`address_${l}` as any)}
+                      className="bg-background/50 min-h-[80px]"
+                      rows={3}
+                      placeholder="Manzil"
+                    />
+                    {(errors as any)[`address_${l}`] && (
+                      <p className="text-xs text-destructive">{(errors as any)[`address_${l}`]?.message}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Manzil */}
-        <div className="card-3d">
-          <div className="card-3d-inner glass-card card-shine rounded-2xl p-6 md:p-8 space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="icon-3d rounded-xl p-2.5 shrink-0">
-                <MapPin className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">Manzil</h3>
-                <p className="text-sm text-muted-foreground">3 tilda kiriting</p>
-              </div>
-            </div>
-            {["uz", "ru", "en"].map((l) => (
-              <div key={l} className="space-y-2" style={{ display: l === formLang ? "block" : "none" }}>
-                <Label className="text-muted-foreground">Manzil ({l === "uz" ? "O'zbek" : l === "ru" ? "Русский" : "English"}) <span className="text-destructive">*</span></Label>
-                <Textarea
-                  {...register(`address_${l}` as any)}
-                  className="bg-background/50 min-h-[80px]"
-                  rows={3}
-                  placeholder="Manzil"
-                />
-                {(errors as any)[`address_${l}`] && (
-                  <p className="text-xs text-destructive">{(errors as any)[`address_${l}`]?.message}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Save button */}
+        {/* Save */}
         <div className="flex justify-end">
           <Button type="submit" disabled={isLoading} className="btn-3d px-8">
             {isLoading ? (
@@ -309,7 +293,7 @@ export default function SettingsPage() {
 
       {/* Ijtimoiy tarmoqlar */}
       <div className="card-3d">
-        <div className="card-3d-inner glass-card card-shine rounded-2xl p-6 md:p-8 space-y-6">
+        <div className="card-3d-inner glass-card card-shine rounded-2xl p-6 space-y-5">
           <div className="flex items-start gap-4">
             <div className="icon-3d rounded-xl p-2.5 shrink-0">
               <Globe className="h-5 w-5 text-primary-foreground" />
@@ -320,41 +304,41 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-2 flex-1 min-w-[150px]">
+          <div className="flex flex-wrap items-end gap-2.5">
+            <div className="space-y-1 flex-1 min-w-[140px]">
               <Label className="text-muted-foreground text-xs">Platforma</Label>
               <Input
-                placeholder="Instagram"
+                placeholder="Telegram"
                 value={socialForm.platform}
                 onChange={(e) => setSocialForm({ ...socialForm, platform: e.target.value })}
-                className="bg-background/50"
+                className="bg-background/50 h-9 text-sm"
               />
             </div>
-            <div className="space-y-2 flex-[2] min-w-[200px]">
+            <div className="space-y-1 flex-[2] min-w-[180px]">
               <Label className="text-muted-foreground text-xs">URL</Label>
               <Input
-                placeholder="https://instagram.com/..."
+                placeholder="https://t.me/..."
                 value={socialForm.url}
                 onChange={(e) => setSocialForm({ ...socialForm, url: e.target.value })}
-                className="bg-background/50"
+                className="bg-background/50 h-9 text-sm"
               />
             </div>
-            <div className="space-y-2 w-20">
+            <div className="space-y-1 w-16">
               <Label className="text-muted-foreground text-xs">Tartib</Label>
               <Input
                 type="number"
                 placeholder="0"
                 value={socialForm.order}
                 onChange={(e) => setSocialForm({ ...socialForm, order: Number(e.target.value) })}
-                className="bg-background/50"
+                className="bg-background/50 h-9 text-sm"
               />
             </div>
-            <Button type="button" onClick={handleSocialSubmit} disabled={socialSaving} className="btn-3d mb-0.5">
-              {socialSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingSocialId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            <Button type="button" onClick={handleSocialSubmit} disabled={socialSaving} className="btn-3d h-9 mb-0.5 px-4 text-sm">
+              {socialSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : editingSocialId ? <Pencil className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
               {editingSocialId ? "Yangilash" : "Qo'shish"}
             </Button>
             {editingSocialId && (
-              <Button type="button" variant="outline" size="sm" onClick={() => {
+              <Button type="button" variant="outline" size="sm" className="h-9 text-sm" onClick={() => {
                 setEditingSocialId(null);
                 setSocialForm({ platform: "", url: "", order: 0 });
               }}>
@@ -363,9 +347,9 @@ export default function SettingsPage() {
             )}
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-2 sm:grid-cols-2">
             {socialLinks.length === 0 ? (
-              <div className="col-span-2 text-center py-10 text-muted-foreground text-sm">Havolalar yo'q</div>
+              <div className="col-span-2 text-center py-8 text-muted-foreground text-sm">Havolalar yo'q</div>
             ) : (
               socialLinks.map((link) => (
                 <div key={link.id} className="group flex items-center justify-between p-3 rounded-xl glass-card hover:scale-[1.01] transition-all">

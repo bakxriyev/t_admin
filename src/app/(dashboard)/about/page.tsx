@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { LanguageTabs } from "@/components/shared/LanguageTabs";
 import { FormLanguageSwitcher } from "@/components/shared/FormLanguageSwitcher";
 import { ImageUpload } from "@/components/shared/ImageUpload";
+import { VideoUpload } from "@/components/shared/VideoUpload";
 import { DeleteConfirmModal } from "@/components/shared/DeleteConfirmModal";
 import {
   Loader2,
@@ -24,16 +25,18 @@ import {
   Heart,
   Clock,
   Calendar,
-  MapPin,
   Globe,
+  Image,
+  Video,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import { getImageUrl } from "@/lib/utils";
 
 const aboutSchema = z.object({
-  content_uz: z.string().min(1),
-  content_ru: z.string().min(1),
-  content_en: z.string().min(1),
+  content_uz: z.string().min(1, "Majburiy maydon"),
+  content_ru: z.string().min(1, "Majburiy maydon"),
+  content_en: z.string().min(1, "Majburiy maydon"),
   mission_uz: z.string().optional(),
   mission_ru: z.string().optional(),
   mission_en: z.string().optional(),
@@ -43,6 +46,22 @@ const aboutSchema = z.object({
 });
 
 type AboutFormData = z.infer<typeof aboutSchema>;
+
+type AboutItem = {
+  id: number;
+  content_uz: string;
+  content_ru: string;
+  content_en: string;
+  mission_uz?: string;
+  mission_ru?: string;
+  mission_en?: string;
+  vision_uz?: string;
+  vision_ru?: string;
+  vision_en?: string;
+  image?: string | null;
+  video?: string | null;
+};
+
 type ValueItem = {
   id: number;
   key: string;
@@ -54,6 +73,7 @@ type ValueItem = {
   description_en: string;
   order: number;
 };
+
 type TimelineItem = {
   id: number;
   year: string;
@@ -81,8 +101,15 @@ const LANG_FLAGS: Record<string, string> = {
 export default function AboutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
-  const [image, setImage] = useState<File | null>(null);
   const [aboutId, setAboutId] = useState<number | null>(null);
+
+  const [existingImage, setExistingImage] = useState<string | null>(null);
+  const [existingVideo, setExistingVideo] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const [removeVideo, setRemoveVideo] = useState(false);
+
   const [values, setValues] = useState<ValueItem[]>([]);
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [editValues, setEditValues] = useState<Record<number, ValueItem>>({});
@@ -110,10 +137,13 @@ export default function AboutPage() {
           api.get("/api/about-values"),
           api.get("/api/timeline"),
         ]);
+
         const aboutData = aboutRes.data.data || aboutRes.data;
-        const item = Array.isArray(aboutData) ? aboutData[0] : aboutData;
+        const item: AboutItem | null = Array.isArray(aboutData) ? aboutData[0] : aboutData;
         if (item) {
           setAboutId(item.id);
+          setExistingImage(item.image || null);
+          setExistingVideo(item.video || null);
           reset({
             content_uz: item.content_uz || "",
             content_ru: item.content_ru || "",
@@ -126,12 +156,13 @@ export default function AboutPage() {
             vision_en: item.vision_en || "",
           });
         }
+
         const vals = valuesRes.data.data || valuesRes.data || [];
         const tims = timelineRes.data.data || timelineRes.data || [];
         setValues(Array.isArray(vals) ? vals : []);
         setTimeline(Array.isArray(tims) ? tims : []);
-      } catch {
-        toast.error("Ma'lumotlarni yuklashda xatolik");
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Ma'lumotlarni yuklashda xatolik");
       } finally {
         setPageLoading(false);
       }
@@ -139,14 +170,50 @@ export default function AboutPage() {
     fetchData();
   }, [reset]);
 
+  const handleImageChange = useCallback((file: File | null) => {
+    setImageFile(file);
+    if (file) setRemoveImage(false);
+  }, []);
+
+  const handleVideoChange = useCallback((file: File | null) => {
+    setVideoFile(file);
+    if (file) setRemoveVideo(false);
+  }, []);
+
+  const handleRemoveExistingImage = () => {
+    setRemoveImage(true);
+    setImageFile(null);
+  };
+
+  const handleRemoveExistingVideo = () => {
+    setRemoveVideo(true);
+    setVideoFile(null);
+  };
+
   const onSubmit = async (data: AboutFormData) => {
+    if (!data.content_uz || !data.content_ru || !data.content_en) {
+      toast.error("Barcha tillardagi matn maydonlari majburiy");
+      return;
+    }
     setIsLoading(true);
     try {
       const formData = new FormData();
-      Object.entries(data).forEach(([key, value]) =>
-        formData.append(key, value as string)
-      );
-      if (image) formData.append("image", image);
+      Object.entries(data).forEach(([key, value]) => {
+        if (value) formData.append(key, value as string);
+      });
+
+      if (imageFile) {
+        formData.append("image", imageFile);
+      } else if (removeImage) {
+        formData.append("_removeImage", "1");
+      }
+
+      if (videoFile) {
+        formData.append("video", videoFile);
+      } else if (removeVideo) {
+        formData.append("_removeVideo", "1");
+      }
+
       if (aboutId) {
         await api.put(`/api/about/${aboutId}`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
@@ -156,9 +223,26 @@ export default function AboutPage() {
           headers: { "Content-Type": "multipart/form-data" },
         });
       }
+
       toast.success("Saqlanib qoldi");
+      const aboutRes = await api.get("/api/about");
+      const aboutData = aboutRes.data.data || aboutRes.data;
+      const item: AboutItem | null = Array.isArray(aboutData) ? aboutData[0] : aboutData;
+      if (item) {
+        setAboutId(item.id);
+        setExistingImage(item.image || null);
+        setExistingVideo(item.video || null);
+        setImageFile(null);
+        setVideoFile(null);
+        setRemoveImage(false);
+        setRemoveVideo(false);
+      }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Xatolik yuz berdi");
+      const msg =
+        error.response?.data?.message ||
+        (typeof error.response?.data === "string" ? error.response.data : null) ||
+        "Xatolik yuz berdi";
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
@@ -195,9 +279,7 @@ export default function AboutPage() {
         description_ru: data.description_ru,
         description_en: data.description_en,
       });
-      setValues((prev) =>
-        prev.map((v) => (v.id === id ? { ...v, ...data } : v))
-      );
+      setValues((prev) => prev.map((v) => (v.id === id ? { ...v, ...data } : v)));
       cancelEditValue(id);
       toast.success("Saqlanib qoldi");
     } catch {
@@ -252,9 +334,7 @@ export default function AboutPage() {
     try {
       const data = editTimeline[id];
       await api.put(`/api/timeline/${id}`, data);
-      setTimeline((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, ...data } : t))
-      );
+      setTimeline((prev) => prev.map((t) => (t.id === id ? { ...t, ...data } : t)));
       cancelEditTimeline(id);
       toast.success("Saqlanib qoldi");
     } catch {
@@ -295,18 +375,14 @@ export default function AboutPage() {
           {textarea ? (
             <Textarea
               value={item[`${fieldPrefix}_${lang}`] || ""}
-              onChange={(e) =>
-                onChange(`${fieldPrefix}_${lang}`, e.target.value)
-              }
+              onChange={(e) => onChange(`${fieldPrefix}_${lang}`, e.target.value)}
               rows={3}
               className="bg-background/50 resize-none"
             />
           ) : (
             <Input
               value={item[`${fieldPrefix}_${lang}`] || ""}
-              onChange={(e) =>
-                onChange(`${fieldPrefix}_${lang}`, e.target.value)
-              }
+              onChange={(e) => onChange(`${fieldPrefix}_${lang}`, e.target.value)}
               className="bg-background/50"
             />
           )}
@@ -361,33 +437,38 @@ export default function AboutPage() {
                 </p>
               </div>
             </div>
+
             <LanguageTabs>
               {(lang) => (
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Matn ({LANG_FLAGS[lang]})
+                      Matn ({LANG_FLAGS[lang]}) <span className="text-destructive">*</span>
                     </Label>
                     <Textarea
-                      {...(register(`content_${lang}` as any) as any)}
+                      {...register(`content_${lang}` as any)}
                       rows={8}
                       className="bg-background/50 resize-none"
+                      placeholder={`${LANG_LABELS[lang]} tilida matn kiriting...`}
                     />
                     {(errors as any)[`content_${lang}`] && (
-                      <p className="text-sm text-destructive">
+                      <p className="text-sm text-destructive flex items-center gap-1">
+                        <span className="size-1.5 rounded-full bg-destructive shrink-0" />
                         {(errors as any)[`content_${lang}`]?.message}
                       </p>
                     )}
                   </div>
+
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Missiya ({LANG_FLAGS[lang]})
                       </Label>
                       <Textarea
-                        {...(register(`mission_${lang}` as any) as any)}
+                        {...register(`mission_${lang}` as any)}
                         rows={4}
                         className="bg-background/50 resize-none"
+                        placeholder="Missiyani kiriting..."
                       />
                     </div>
                     <div className="space-y-2">
@@ -395,9 +476,10 @@ export default function AboutPage() {
                         Maqsad ({LANG_FLAGS[lang]})
                       </Label>
                       <Textarea
-                        {...(register(`vision_${lang}` as any) as any)}
+                        {...register(`vision_${lang}` as any)}
                         rows={4}
                         className="bg-background/50 resize-none"
+                        placeholder="Maqsadni kiriting..."
                       />
                     </div>
                   </div>
@@ -407,7 +489,7 @@ export default function AboutPage() {
           </div>
         </div>
 
-        {/* Rasm */}
+        {/* Rasm va Video */}
         <div className="card-3d">
           <div className="card-3d-inner glass-card card-shine rounded-2xl p-6 md:p-8 space-y-6">
             <div className="flex items-start gap-4">
@@ -415,26 +497,111 @@ export default function AboutPage() {
                 <Globe className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold">Rasm</h3>
+                <h3 className="text-lg font-semibold">Media fayllar</h3>
                 <p className="text-sm text-muted-foreground">
-                  &quot;Biz haqimizda&quot; bo&apos;limi uchun asosiy rasm
+                  Rasm va video yuklang
                 </p>
               </div>
             </div>
-            <ImageUpload value={null} onChange={setImage} />
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div className="space-y-3">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <Image className="h-3.5 w-3.5" />
+                  Rasm
+                </Label>
+                {existingImage && !removeImage && !imageFile ? (
+                  <div className="relative inline-block w-full">
+                    <img
+                      src={getImageUrl(existingImage)}
+                      alt="Current"
+                      className="h-48 w-full object-cover rounded-lg border"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 h-8 w-8"
+                      onClick={handleRemoveExistingImage}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <ImageUpload value={null} onChange={handleImageChange} />
+                )}
+                {removeImage && !imageFile && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Rasm o&apos;chiriladi. Yangi rasm tanlang yoki saqlang.
+                  </p>
+                )}
+                {existingImage && (
+                  <p className="text-xs text-muted-foreground">
+                    {removeImage
+                      ? "Rasm o'chiriladi"
+                      : imageFile
+                        ? "Yangi rasm tanlandi"
+                        : "Mavjud rasm ko'rsatilmoqda"}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <Video className="h-3.5 w-3.5" />
+                  Video
+                </Label>
+                {existingVideo && !removeVideo && !videoFile ? (
+                  <div className="relative inline-block w-full">
+                    <video
+                      src={getImageUrl(existingVideo)}
+                      controls
+                      className="h-48 w-full object-cover rounded-lg border bg-black"
+                    >
+                      <source src={getImageUrl(existingVideo)} />
+                    </video>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 h-8 w-8"
+                      onClick={handleRemoveExistingVideo}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <VideoUpload value={null} onChange={handleVideoChange} />
+                )}
+                {removeVideo && !videoFile && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Video o&apos;chiriladi. Yangi video tanlang yoki saqlang.
+                  </p>
+                )}
+                {existingVideo && (
+                  <p className="text-xs text-muted-foreground">
+                    {removeVideo
+                      ? "Video o'chiriladi"
+                      : videoFile
+                        ? "Yangi video tanlandi"
+                        : "Mavjud video ko'rsatilmoqda"}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Save button */}
         <div className="flex justify-end">
-          <Button type="submit" disabled={isLoading} className="btn-3d px-8">
+          <Button type="submit" disabled={isLoading} className="btn-3d px-8 gap-2">
             {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saqlanmoqda...
+                <Loader2 className="h-4 w-4 animate-spin" /> Saqlanmoqda...
               </>
             ) : (
               <>
-                <Save className="mr-2 h-4 w-4" /> Saqlash
+                <Save className="h-4 w-4" /> Saqlash
               </>
             )}
           </Button>
@@ -486,6 +653,7 @@ export default function AboutPage() {
                     {editValues[v.id] ? (
                       <>
                         <Button
+                          type="button"
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 hover:bg-emerald-100 hover:text-emerald-600 dark:hover:bg-emerald-900/30"
@@ -499,6 +667,7 @@ export default function AboutPage() {
                           )}
                         </Button>
                         <Button
+                          type="button"
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30"
@@ -509,6 +678,7 @@ export default function AboutPage() {
                       </>
                     ) : (
                       <Button
+                        type="button"
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 hover:bg-primary/10"
@@ -522,18 +692,11 @@ export default function AboutPage() {
 
                 {editValues[v.id] ? (
                   <div className="space-y-3">
-                    {renderMultilangFields(
-                      "Sarlavha",
-                      "title",
-                      editValues[v.id],
-                      (f, val) => updateEditValue(v.id, f, val)
+                    {renderMultilangFields("Sarlavha", "title", editValues[v.id], (f, val) =>
+                      updateEditValue(v.id, f, val)
                     )}
-                    {renderMultilangFields(
-                      "Tavsif",
-                      "description",
-                      editValues[v.id],
-                      (f, val) => updateEditValue(v.id, f, val),
-                      true
+                    {renderMultilangFields("Tavsif", "description", editValues[v.id], (f, val) =>
+                      updateEditValue(v.id, f, val), true
                     )}
                   </div>
                 ) : (
@@ -579,6 +742,7 @@ export default function AboutPage() {
 
           <div className="flex justify-end">
             <Button
+              type="button"
               size="sm"
               onClick={() =>
                 setNewTimeline({
@@ -622,6 +786,7 @@ export default function AboutPage() {
                     <h4 className="font-semibold text-sm">Yangi hodisa</h4>
                   </div>
                   <Button
+                    type="button"
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30"
@@ -637,10 +802,7 @@ export default function AboutPage() {
                   <Input
                     value={newTimeline.year || ""}
                     onChange={(e) =>
-                      setNewTimeline((prev) => ({
-                        ...prev!,
-                        year: e.target.value,
-                      }))
+                      setNewTimeline((prev) => ({ ...prev!, year: e.target.value }))
                     }
                     placeholder="2024"
                     className="bg-background/50"
@@ -649,15 +811,12 @@ export default function AboutPage() {
                 {renderMultilangFields("Sarlavha", "title", newTimeline, (f, val) =>
                   setNewTimeline((prev) => ({ ...prev!, [f]: val }))
                 )}
-                {renderMultilangFields(
-                  "Tavsif",
-                  "description",
-                  newTimeline,
-                  (f, val) => setNewTimeline((prev) => ({ ...prev!, [f]: val })),
-                  true
+                {renderMultilangFields("Tavsif", "description", newTimeline, (f, val) =>
+                  setNewTimeline((prev) => ({ ...prev!, [f]: val })), true
                 )}
                 <div className="flex justify-end gap-2">
                   <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => setNewTimeline(null)}
@@ -665,6 +824,7 @@ export default function AboutPage() {
                     Bekor qilish
                   </Button>
                   <Button
+                    type="button"
                     onClick={saveNewTimeline}
                     disabled={savingTimeline === "new"}
                     size="sm"
@@ -682,7 +842,7 @@ export default function AboutPage() {
             )}
 
             {/* Timeline Items */}
-            {timeline.map((t, idx) => {
+            {timeline.map((t) => {
               const isEditing = !!editTimeline[t.id];
               return (
                 <div
@@ -707,6 +867,7 @@ export default function AboutPage() {
                           {isEditing ? (
                             <>
                               <Button
+                                type="button"
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 hover:bg-emerald-100 hover:text-emerald-600 dark:hover:bg-emerald-900/30"
@@ -720,6 +881,7 @@ export default function AboutPage() {
                                 )}
                               </Button>
                               <Button
+                                type="button"
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30"
@@ -731,6 +893,7 @@ export default function AboutPage() {
                           ) : (
                             <>
                               <Button
+                                type="button"
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 hover:bg-primary/10"
@@ -739,6 +902,7 @@ export default function AboutPage() {
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
                               <Button
+                                type="button"
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
@@ -759,24 +923,15 @@ export default function AboutPage() {
                             </Label>
                             <Input
                               value={editTimeline[t.id].year || ""}
-                              onChange={(e) =>
-                                updateEditTimeline(t.id, "year", e.target.value)
-                              }
+                              onChange={(e) => updateEditTimeline(t.id, "year", e.target.value)}
                               className="bg-background/50"
                             />
                           </div>
-                          {renderMultilangFields(
-                            "Sarlavha",
-                            "title",
-                            editTimeline[t.id],
-                            (f, val) => updateEditTimeline(t.id, f, val)
+                          {renderMultilangFields("Sarlavha", "title", editTimeline[t.id], (f, val) =>
+                            updateEditTimeline(t.id, f, val)
                           )}
-                          {renderMultilangFields(
-                            "Tavsif",
-                            "description",
-                            editTimeline[t.id],
-                            (f, val) => updateEditTimeline(t.id, f, val),
-                            true
+                          {renderMultilangFields("Tavsif", "description", editTimeline[t.id], (f, val) =>
+                            updateEditTimeline(t.id, f, val), true
                           )}
                         </div>
                       ) : (
@@ -787,15 +942,9 @@ export default function AboutPage() {
                                 key={l}
                                 className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-muted/50 text-muted-foreground"
                               >
-                                <span className="font-semibold">
-                                  {LANG_FLAGS[l]}
-                                </span>
+                                <span className="font-semibold">{LANG_FLAGS[l]}</span>
                                 <span className="truncate max-w-[120px]">
-                                  {
-                                    t[
-                                      `title_${l}` as keyof TimelineItem
-                                    ] as string
-                                  }
+                                  {t[`title_${l}` as keyof TimelineItem] as string}
                                 </span>
                               </span>
                             ))}
