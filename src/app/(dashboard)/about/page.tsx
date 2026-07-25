@@ -205,36 +205,66 @@ export default function AboutPage() {
     setSavingValue(id);
     try {
       const d = editValues[id];
-      await api.put(`/api/about-values/${id}`, {
-        title_uz: d.title_uz, title_ru: d.title_ru, title_en: d.title_en,
-        description_uz: d.description_uz, description_ru: d.description_ru, description_en: d.description_en,
-      });
-      setValues((prev) => prev.map((v) => (v.id === id ? { ...v, ...d } : v)));
+      if (!d) {
+        toast.error("Tahrirlanadigan ma'lumot topilmadi");
+        setSavingValue(null);
+        return;
+      }
+      const payload = {
+        title_uz: d.title_uz || "", title_ru: d.title_ru || "", title_en: d.title_en || "",
+        description_uz: d.description_uz || "", description_ru: d.description_ru || "", description_en: d.description_en || "",
+      };
+      const res = await api.put(`/api/about-values/${id}`, payload);
+      const updated = res.data.data || res.data;
+      setValues((prev) => prev.map((v) => (v.id === id ? { ...v, ...updated } : v)));
       cancelEditValue(id);
       toast.success("Saqlanib qoldi");
-    } catch { toast.error("Xatolik yuz berdi"); }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || "Xatolik yuz berdi";
+      console.error("Save value error:", err.response?.data || err);
+      toast.error(msg);
+    }
     finally { setSavingValue(null); }
   };
 
   const createValue = async () => {
-    if (!newValue.title_uz && !newValue.title_ru && !newValue.title_en) {
+    const titleUz = newValue.title_uz?.trim() || "";
+    const titleRu = newValue.title_ru?.trim() || "";
+    const titleEn = newValue.title_en?.trim() || "";
+    if (!titleUz && !titleRu && !titleEn) {
       toast.error("Kamida bitta tilda sarlavha kiriting");
       return;
     }
     setCreatingValue(true);
     try {
-      const res = await api.post("/api/about-values", {
-        key: newValue.key || newValue.title_uz?.toLowerCase().replace(/\s+/g, "_") || `value_${Date.now()}`,
-        title_uz: newValue.title_uz || "", title_ru: newValue.title_ru || "", title_en: newValue.title_en || "",
-        description_uz: newValue.description_uz || "", description_ru: newValue.description_ru || "", description_en: newValue.description_en || "",
+      const payload = {
+        key: newValue.key?.trim() || titleUz.toLowerCase().replace(/\s+/g, "_") || `value_${Date.now()}`,
+        title_uz: titleUz, title_ru: titleRu, title_en: titleEn,
+        description_uz: newValue.description_uz?.trim() || "",
+        description_ru: newValue.description_ru?.trim() || "",
+        description_en: newValue.description_en?.trim() || "",
         order: values.length + 1,
-      });
+      };
+      const res = await api.post("/api/about-values", payload);
       const created = res.data.data || res.data;
-      setValues((prev) => [...prev, created]);
-      setShowNewValue(false);
-      setNewValue({});
-      toast.success("Qo'shildi");
-    } catch { toast.error("Xatolik yuz berdi"); }
+      if (created && created.id) {
+        setValues((prev) => [...prev, created]);
+        setShowNewValue(false);
+        setNewValue({});
+        toast.success("Qo'shildi");
+      } else {
+        const refetch = await api.get("/api/about-values");
+        const fresh = refetch.data.data || refetch.data || [];
+        setValues(Array.isArray(fresh) ? fresh : []);
+        setShowNewValue(false);
+        setNewValue({});
+        toast.success("Qo'shildi");
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || "Xatolik yuz berdi";
+      console.error("Create value error:", err.response?.data || err);
+      toast.error(msg);
+    }
     finally { setCreatingValue(false); }
   };
 
@@ -243,7 +273,11 @@ export default function AboutPage() {
       await api.delete(`/api/about-values/${id}`);
       setValues((prev) => prev.filter((v) => v.id !== id));
       toast.success("O'chirildi");
-    } catch { toast.error("Xatolik yuz berdi"); }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || "Xatolik yuz berdi";
+      console.error("Delete value error:", err.response?.data || err);
+      toast.error(msg);
+    }
   };
 
   const saveNewTimeline = async () => {

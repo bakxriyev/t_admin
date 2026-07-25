@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ImageUpload } from "@/components/shared/ImageUpload";
 import { DeleteConfirmModal } from "@/components/shared/DeleteConfirmModal";
+import { MapPicker } from "@/components/shared/MapPicker";
 import { FormLanguageSwitcher } from "@/components/shared/FormLanguageSwitcher";
 import { useLanguage } from "@/providers/LanguageProvider";
 import {
@@ -46,6 +47,8 @@ export default function SettingsPage() {
   const [logo, setLogo] = useState<File | null>(null);
   const [favicon, setFavicon] = useState<File | null>(null);
   const [initialData, setInitialData] = useState<any>(null);
+  const [latitude, setLatitude] = useState(41.3111);
+  const [longitude, setLongitude] = useState(69.2797);
 
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [socialForm, setSocialForm] = useState({ platform: "", url: "", order: 0 });
@@ -77,6 +80,8 @@ export default function SettingsPage() {
           working_hours_ru: data.working_hours_ru || "",
           working_hours_en: data.working_hours_en || "",
         });
+        setLatitude(data.latitude ?? 41.3111);
+        setLongitude(data.longitude ?? 69.2797);
       } catch { toast.error("Ma'lumotlarni yuklashda xatolik"); }
       finally { setPageLoading(false); }
     };
@@ -96,6 +101,8 @@ export default function SettingsPage() {
       Object.entries(data).forEach(([key, value]) => formData.append(key, value as string));
       if (logo) formData.append("logo", logo);
       if (favicon) formData.append("favicon", favicon);
+      formData.append("latitude", String(latitude));
+      formData.append("longitude", String(longitude));
       await api.put("/api/settings", formData, { headers: { "Content-Type": "multipart/form-data" } });
       toast.success("Sozlamalar saqlandi");
     } catch (error: any) {
@@ -274,6 +281,39 @@ export default function SettingsPage() {
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Xarita */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="icon-3d rounded-xl p-2 shrink-0">
+                  <MapPin className="h-4 w-4 text-primary-foreground" />
+                </div>
+                <h4 className="text-sm font-semibold">Joylashuv (xaritada belgilang)</h4>
+              </div>
+              <MapPicker lat={latitude} lng={longitude} onChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }} />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground text-xs">Kenglik (Latitude)</Label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={latitude}
+                    onChange={(e) => setLatitude(Number(e.target.value))}
+                    className="flex h-9 w-full rounded-lg border border-input bg-background/50 px-3 py-1 text-sm shadow-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground text-xs">Uzunlik (Longitude)</Label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={longitude}
+                    onChange={(e) => setLongitude(Number(e.target.value))}
+                    className="flex h-9 w-full rounded-lg border border-input bg-background/50 px-3 py-1 text-sm shadow-sm"
+                  />
+                </div>
               </div>
             </div>
           </div>
