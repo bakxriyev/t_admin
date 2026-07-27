@@ -220,7 +220,7 @@ export function EntityForm({
             if (!file) return;
             if (Array.isArray(rawFiles) && key === multiField.name) {
               allFiles.forEach((f) => {
-                formData.append(`${key}[]`, f);
+                formData.append(key, f);
               });
             } else if (!Array.isArray(file)) {
               formData.append(key, file);
@@ -285,7 +285,7 @@ export function EntityForm({
           if (!file) return;
           if (Array.isArray(file)) {
             file.forEach((f) => {
-              if (f) formData.append(`${key}[]`, f);
+              if (f) formData.append(key, f);
             });
           } else {
             formData.append(key, file);

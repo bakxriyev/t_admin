@@ -1,7 +1,7 @@
-const MAX_WIDTH = 1920;
-const MAX_HEIGHT = 1920;
-const QUALITY = 0.75;
-const MAX_FILE_SIZE = 800 * 1024;
+const MAX_WIDTH = 2048;
+const MAX_HEIGHT = 2048;
+const QUALITY = 0.85;
+const MAX_FILE_SIZE = 1200 * 1024;
 
 export interface CompressResult {
   file: File;
