@@ -41,6 +41,7 @@ interface FieldConfig {
   options?: { value: string; label: string }[];
   lang?: string;
   required?: boolean;
+  backendKey?: string;
 }
 
 interface EntityFormProps {
@@ -211,16 +212,17 @@ export function EntityForm({
 
           const formData = new FormData();
           Object.entries(data).forEach(([key, value]) => {
-            if (value !== undefined && value !== null && value !== "") {
+            if (value !== undefined && value !== null && value !== "" && key !== multiField.name) {
               formData.append(key, String(value));
             }
           });
 
           Object.entries(fileValues).forEach(([key, file]) => {
             if (!file) return;
+            const sendKey = multiField.backendKey || key;
             if (Array.isArray(rawFiles) && key === multiField.name) {
               allFiles.forEach((f) => {
-                formData.append(key, f);
+                formData.append(sendKey, f);
               });
             } else if (!Array.isArray(file)) {
               formData.append(key, file);
@@ -283,12 +285,14 @@ export function EntityForm({
         });
         Object.entries(fileValues).forEach(([key, file]) => {
           if (!file) return;
+          const fieldConfig = fields.find((f) => f.name === key);
+          const sendKey = fieldConfig?.backendKey || key;
           if (Array.isArray(file)) {
             file.forEach((f) => {
-              if (f) formData.append(key, f);
+              if (f) formData.append(sendKey, f);
             });
           } else {
-            formData.append(key, file);
+            formData.append(sendKey, file);
           }
         });
 

@@ -8,7 +8,7 @@ const fields = [
   { name: "achievement", label: "Yutuq", type: "multilang" as const, placeholder: "Yutuq" },
   { name: "description", label: "Tavsif", type: "multilang-textarea" as const, placeholder: "Tavsif" },
   { name: "year", label: "Yil", type: "number" as const },
-  { name: "photos", label: "📸 Rasmlar (bir nechta tanlang)", type: "multi-file" as const },
+  { name: "photos", label: "Rasmlar (bir nechta tanlang)", type: "multi-file" as const, backendKey: "photo" },
   { name: "is_active", label: "Faol", type: "boolean" as const },
 ];
 
