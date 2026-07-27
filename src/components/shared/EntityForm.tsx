@@ -24,6 +24,7 @@ import {
 import { LanguageTabs } from "./LanguageTabs";
 import { FormLanguageSwitcher } from "./FormLanguageSwitcher";
 import { ImageUpload } from "./ImageUpload";
+import { MultiImageUpload } from "./MultiImageUpload";
 import { VideoUpload } from "./VideoUpload";
 import { Loader2, ArrowLeft, Save, Copy, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -33,7 +34,7 @@ import { type ZodSchema } from "zod";
 interface FieldConfig {
   name: string;
   label: string;
-  type: "text" | "textarea" | "select" | "number" | "email" | "url" | "file" | "boolean" | "multilang" | "multilang-textarea";
+  type: "text" | "textarea" | "select" | "number" | "email" | "url" | "file" | "multi-file" | "boolean" | "multilang" | "multilang-textarea";
   placeholder?: string;
   options?: { value: string; label: string }[];
   lang?: string;
@@ -66,9 +67,9 @@ export function EntityForm({
   const params = useParams();
   const [isLoading, setIsLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(isEdit);
-  const [fileValues, setFileValues] = useState<Record<string, File | null>>({});
+  const [fileValues, setFileValues] = useState<Record<string, File[] | File | null>>({});
   const initialDataRef = useRef<any>(null);
-  const [initialImage, setInitialImage] = useState<Record<string, string | null>>({});
+  const [initialImage, setInitialImage] = useState<Record<string, string | string[] | null>>({});
 
   const [missingFields, setMissingFields] = useState<{ label: string; filledLang: string; emptyLangs: string[] }[]>([]);
   const [showLangDialog, setShowLangDialog] = useState(false);
@@ -94,8 +95,8 @@ export function EntityForm({
               MULTILANG_SUFFIXES.forEach((suffix) => {
                 formData[`${f.name}${suffix}`] = data[`${f.name}${suffix}`] ?? "";
               });
-            } else if (f.type === "file") {
-              imgs[f.name] = data[f.name] || null;
+            } else if (f.type === "file" || f.type === "multi-file") {
+              imgs[f.name] = data[f.name] || (f.type === "multi-file" ? [] : null);
             } else if (f.type === "select") {
               formData[f.name] = data[f.name] ?? (f.options?.[0]?.value || "");
             } else if (f.type === "boolean") {
@@ -117,7 +118,7 @@ export function EntityForm({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params?.id, isEdit, apiEndpoint]);
 
-  const handleFileChange = (name: string, file: File | null) => {
+  const handleFileChange = (name: string, file: File | File[] | null) => {
     setFileValues((prev) => ({ ...prev, [name]: file }));
   };
 
@@ -155,7 +156,7 @@ export function EntityForm({
   const doSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      const hasFile = fields.some((f) => f.type === "file");
+      const hasFile = fields.some((f) => f.type === "file" || f.type === "multi-file");
       let res;
 
       if (hasFile) {
@@ -166,7 +167,14 @@ export function EntityForm({
           }
         });
         Object.entries(fileValues).forEach(([key, file]) => {
-          if (file) formData.append(key, file);
+          if (!file) return;
+          if (Array.isArray(file)) {
+            file.forEach((f) => {
+              if (f) formData.append(`${key}[]`, f);
+            });
+          } else {
+            formData.append(key, file);
+          }
         });
 
         if (isEdit && params?.id) {
@@ -236,9 +244,9 @@ export function EntityForm({
     (f) => (f.type === "multilang" || f.type === "multilang-textarea")
   );
   const requiredSimpleFields = fields.filter(
-    (f) => f.type !== "multilang" && f.type !== "multilang-textarea" && f.type !== "file" && f.type !== "boolean"
+    (f) => f.type !== "multilang" && f.type !== "multilang-textarea" && f.type !== "file" && f.type !== "multi-file" && f.type !== "boolean"
   );
-  const fileFields = fields.filter((f) => f.type === "file");
+  const fileFields = fields.filter((f) => f.type === "file" || f.type === "multi-file");
   const booleanFields = fields.filter((f) => f.type === "boolean");
 
   if (pageLoading) {
@@ -328,21 +336,27 @@ export function EntityForm({
       );
     }
 
-    if (field.type === "file") {
+    if (field.type === "file" || field.type === "multi-file") {
       const existingUrl = initialImage[field.name] || (initialDataRef.current ? initialDataRef.current[field.name] : null);
       const isVideo = field.name === "video";
+      const isMulti = field.type === "multi-file";
       return (
         <div className="space-y-2" key={field.name}>
           <Label className="text-muted-foreground text-sm">{field.label}</Label>
-          <div className="glass-card rounded-xl p-3 flex items-center justify-center min-h-[140px]">
+          <div className="glass-card rounded-xl p-3">
             {isVideo ? (
               <VideoUpload
-                value={existingUrl}
+                value={existingUrl as string}
                 onChange={(file) => handleFileChange(field.name, file)}
+              />
+            ) : isMulti ? (
+              <MultiImageUpload
+                value={Array.isArray(existingUrl) ? existingUrl : (existingUrl ? [existingUrl] : [])}
+                onChange={(files) => handleFileChange(field.name, files)}
               />
             ) : (
               <ImageUpload
-                value={existingUrl}
+                value={existingUrl as string}
                 onChange={(file) => handleFileChange(field.name, file)}
               />
             )}

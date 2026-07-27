@@ -373,10 +373,15 @@ export default function ResultsPage() {
                       {/* Image */}
                       <div className="relative h-44 overflow-hidden bg-muted flex items-center justify-center">
                         <img
-                          src={getImageUrl(item.photo)}
+                          src={getImageUrl(item.photos?.[0])}
                           alt={item.student_name_uz}
                           className="h-28 w-28 rounded-full object-cover border-4 border-background shadow-lg transition-transform duration-500 group-hover:scale-110"
                         />
+                        {item.photos && item.photos.length > 1 && (
+                          <div className="absolute bottom-2 right-3 bg-background/80 backdrop-blur-sm rounded-full px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            +{item.photos.length - 1}
+                          </div>
+                        )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                         {/* Number Badge */}
                         <div className="absolute top-3 left-3 icon-3d rounded-lg px-2.5 py-1 text-xs font-bold text-primary-foreground">
@@ -505,7 +510,7 @@ export default function ResultsPage() {
                           <td className="px-5 py-3.5">
                             <div className="h-10 w-10 rounded-full overflow-hidden bg-muted shrink-0 ring-2 ring-border/50">
                               <img
-                                src={getImageUrl(item.photo)}
+                                src={getImageUrl(item.photos?.[0])}
                                 alt=""
                                 className="h-full w-full object-cover"
                               />

@@ -128,7 +128,7 @@ export interface Result {
   description_ru: string;
   description_en: string;
   year: number;
-  photo?: string;
+  photos?: string[];
   is_active: boolean;
   created_at: string;
   updated_at: string;

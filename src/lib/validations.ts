@@ -72,7 +72,7 @@ export const resultSchema = z.object({
   description_ru: z.string().optional(),
   description_en: z.string().optional(),
   year: z.number().min(1900).max(2100),
-  photo: z.any().optional(),
+  photos: z.array(z.any()).optional(),
   is_active: z.boolean().optional(),
 });
 
