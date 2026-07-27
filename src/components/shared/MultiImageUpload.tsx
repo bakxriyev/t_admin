@@ -154,7 +154,7 @@ export function MultiImageUpload({ value, onChange, className }: MultiImageUploa
               Rasmlarni tashlang yoki tanlang
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              PNG, JPG, WebP - bir nechta rasm tanlash mumkin
+              PNG, JPG, WebP - avtomatik siqiladi (max 1920px, ~500KB)
             </p>
           </>
         )}

@@ -3,7 +3,7 @@
 import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,6 +26,8 @@ import { FormLanguageSwitcher } from "./FormLanguageSwitcher";
 import { ImageUpload } from "./ImageUpload";
 import { MultiImageUpload } from "./MultiImageUpload";
 import { VideoUpload } from "./VideoUpload";
+import { UploadProgressBar, type UploadFileStatus } from "./UploadProgressBar";
+import { compressImages, formatSize } from "@/lib/imageCompression";
 import { Loader2, ArrowLeft, Save, Copy, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
@@ -74,6 +76,11 @@ export function EntityForm({
   const [missingFields, setMissingFields] = useState<{ label: string; filledLang: string; emptyLangs: string[] }[]>([]);
   const [showLangDialog, setShowLangDialog] = useState(false);
   const pendingDataRef = useRef<any>(null);
+
+  const [uploadStatuses, setUploadStatuses] = useState<UploadFileStatus[]>([]);
+  const [uploadStep, setUploadStep] = useState<"compressing" | "uploading" | "done">("compressing");
+  const [overallProgress, setOverallProgress] = useState(0);
+  const [showProgress, setShowProgress] = useState(false);
 
   const {
     register, handleSubmit, setValue, watch, reset, formState: { errors },
@@ -153,11 +160,119 @@ export function EntityForm({
     return missing;
   };
 
+  const buildStatuses = (files: File[]): UploadFileStatus[] => {
+    return files.map((f) => ({
+      name: f.name,
+      originalSize: formatSize(f.size),
+      compressedSize: formatSize(f.size),
+      status: "pending" as const,
+      progress: 0,
+    }));
+  };
+
   const doSubmit = async (data: any) => {
     setIsLoading(true);
+    const hasMultiFile = fields.some((f) => f.type === "multi-file");
+    const hasFile = fields.some((f) => f.type === "file" || f.type === "multi-file");
+
     try {
-      const hasFile = fields.some((f) => f.type === "file" || f.type === "multi-file");
-      let res;
+      if (hasMultiFile) {
+        const multiField = fields.find((f) => f.type === "multi-file");
+        if (!multiField) throw new Error("multi-file field not found");
+
+        const rawFiles = fileValues[multiField.name];
+        const files = Array.isArray(rawFiles) ? rawFiles : rawFiles ? [rawFiles] : [];
+
+        if (files.length > 0) {
+          const statuses = buildStatuses(files);
+          setUploadStatuses(statuses);
+          setUploadStep("compressing");
+          setOverallProgress(0);
+          setShowProgress(true);
+
+          const compressed = await compressImages(files, (current, total, result) => {
+            setUploadStatuses((prev) => {
+              const updated = [...prev];
+              updated[current - 1] = {
+                ...updated[current - 1],
+                originalSize: formatSize(result.originalSize),
+                compressedSize: formatSize(result.compressedSize),
+                status: "compressed",
+              };
+              return updated;
+            });
+            setOverallProgress((current / total) * 50);
+          });
+
+          setUploadStep("uploading");
+          setUploadStatuses((prev) => prev.map((s) => ({ ...s, status: "uploading" })));
+
+          const allFiles = compressed.map((c) => c.file);
+
+          const formData = new FormData();
+          Object.entries(data).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== "") {
+              formData.append(key, String(value));
+            }
+          });
+
+          Object.entries(fileValues).forEach(([key, file]) => {
+            if (!file) return;
+            if (Array.isArray(rawFiles) && key === multiField.name) {
+              allFiles.forEach((f) => {
+                formData.append(`${key}[]`, f);
+              });
+            } else if (!Array.isArray(file)) {
+              formData.append(key, file);
+            }
+          });
+
+          let res;
+          if (isEdit && params?.id) {
+            res = await api.put(`${apiEndpoint}/${params.id}`, formData, {
+              headers: { "Content-Type": "multipart/form-data" },
+              onUploadProgress: (progressEvent) => {
+                if (progressEvent.total) {
+                  const pct = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+                  setOverallProgress(50 + pct / 2);
+                  setUploadStatuses((prev) =>
+                    prev.map((s) => ({
+                      ...s,
+                      progress: pct,
+                    }))
+                  );
+                }
+              },
+            });
+          } else {
+            res = await api.post(apiEndpoint, formData, {
+              headers: { "Content-Type": "multipart/form-data" },
+              onUploadProgress: (progressEvent) => {
+                if (progressEvent.total) {
+                  const pct = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+                  setOverallProgress(50 + pct / 2);
+                  setUploadStatuses((prev) =>
+                    prev.map((s) => ({
+                      ...s,
+                      progress: pct,
+                    }))
+                  );
+                }
+              },
+            });
+          }
+
+          setOverallProgress(100);
+          setUploadStatuses((prev) => prev.map((s) => ({ ...s, status: "done", progress: 100 })));
+          setUploadStep("done");
+          await new Promise((r) => setTimeout(r, 600));
+
+          setShowProgress(false);
+          toast.success(res.data?.message || (isEdit ? "Yangilandi" : "Qo'shildi"));
+          router.push(redirectPath);
+          return;
+        }
+      }
 
       if (hasFile) {
         const formData = new FormData();
@@ -177,6 +292,7 @@ export function EntityForm({
           }
         });
 
+        let res;
         if (isEdit && params?.id) {
           res = await api.put(`${apiEndpoint}/${params.id}`, formData, {
             headers: { "Content-Type": "multipart/form-data" },
@@ -186,22 +302,31 @@ export function EntityForm({
             headers: { "Content-Type": "multipart/form-data" },
           });
         }
+
+        toast.success(res.data?.message || (isEdit ? "Yangilandi" : "Qo'shildi"));
       } else {
         const cleanData = { ...data };
         Object.keys(cleanData).forEach((key) => {
           if (cleanData[key] === "" && key !== "is_active") cleanData[key] = undefined;
         });
+        let res;
         if (isEdit && params?.id) {
           res = await api.put(`${apiEndpoint}/${params.id}`, cleanData);
         } else {
           res = await api.post(apiEndpoint, cleanData);
         }
+        toast.success(res.data?.message || (isEdit ? "Yangilandi" : "Qo'shildi"));
       }
 
-      toast.success(res.data?.message || (isEdit ? "Yangilandi" : "Qo'shildi"));
       router.push(redirectPath);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Xatolik yuz berdi");
+      const msg = error.response?.status === 413
+        ? "Fayllar juda katta! Iltimos kamroq rasm tanlang yoki kichikroq rasmlar yuklang."
+        : (error.response?.data?.message || "Xatolik yuz berdi");
+      toast.error(msg);
+
+      setUploadStatuses((prev) => prev.map((s) => ({ ...s, status: "error" as const })));
+      setShowProgress(false);
     } finally {
       setIsLoading(false);
     }
@@ -423,7 +548,7 @@ export function EntityForm({
           <FormLanguageSwitcher />
         </div>
 
-        {/* Multilang fields - each in its own glass card */}
+        {/* Multilang fields */}
         {requiredMultilangFields.length > 0 && (
           <div className="space-y-6">
             <div className="flex items-center gap-2">
@@ -466,6 +591,20 @@ export function EntityForm({
           </div>
         )}
 
+        {/* Upload Progress */}
+        {showProgress && uploadStatuses.length > 0 && (
+          <div className="card-3d">
+            <div className="card-3d-inner glass-card card-shine rounded-2xl p-5 md:p-7">
+              <h3 className="font-semibold text-base mb-4">Yuklash jarayoni</h3>
+              <UploadProgressBar
+                files={uploadStatuses}
+                currentStep={uploadStep}
+                overallProgress={overallProgress}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Action buttons */}
         <div className="flex gap-3 pt-2">
           <Button type="submit" disabled={isLoading} className="btn-3d px-8 gap-2">
@@ -475,7 +614,7 @@ export function EntityForm({
               <><Save className="h-4 w-4" /> Saqlash</>
             )}
           </Button>
-          <Button variant="outline" type="button" onClick={() => router.push(redirectPath)} className="gap-2">
+          <Button variant="outline" type="button" onClick={() => router.push(redirectPath)} disabled={isLoading} className="gap-2">
             Bekor qilish
           </Button>
         </div>
