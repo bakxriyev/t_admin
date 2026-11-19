@@ -16,6 +16,7 @@ import {
   MessageSquareQuote,
   Video,
   BarChart3,
+  MessagesSquare,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,6 +41,7 @@ export const navigationItems: NavItem[] = [
   { title: "Biz haqimizda", href: "/about", icon: Info },
   { title: "Arizalar", href: "/applications", icon: ClipboardList },
   { title: "Savollar", href: "/questions", icon: HelpCircle },
+  { title: "FAQ", href: "/faq", icon: MessagesSquare },
   { title: "Ijtimoiy tarmoqlar", href: "/social-links", icon: Link2 },
   { title: "Sozlamalar", href: "/settings", icon: Settings2 },
   { title: "Analitika", href: "/analytics", icon: Activity },
@@ -80,8 +82,8 @@ export const vacancyTypeOptions = [
 
 export const heroFields = [
   { name: "title", label: "Sarlavha", type: "multilang" as const, placeholder: "Asosiy sarlavha" },
-  { name: "subtitle", label: "Subtitr (kursiv)", type: "multilang" as const, placeholder: "Subtitr matni" },
-  { name: "button_text", label: "Tugma matni", type: "multilang" as const, placeholder: "Ro'yxatdan o'tish" },
+  { name: "subtitle", label: "Subtitr (kursiv)", type: "multilang" as const, placeholder: "Subtitr matni", required: false },
+  { name: "button_text", label: "Tugma matni", type: "multilang" as const, placeholder: "Ro'yxatdan o'tish", required: false },
   { name: "button_link", label: "Tugma URL", type: "url" as const, placeholder: "https://..." },
   { name: "video_url", label: "Video URL", type: "url" as const, placeholder: "https://youtube.com/..." },
   { name: "image", label: "Rasm", type: "file" as const },
@@ -112,8 +114,8 @@ export const courseOfferFields = [
 
 export const testimonialFields = [
   { name: "name", label: "Ism", type: "multilang" as const, placeholder: "Ism familiya" },
-  { name: "position", label: "Lavozim", type: "multilang" as const, placeholder: "Lavozim" },
-  { name: "content", label: "Matn", type: "multilang" as const, placeholder: "Fikr matni" },
+  { name: "position", label: "Lavozim", type: "multilang" as const, placeholder: "Lavozim", required: false },
+  { name: "content", label: "Matn", type: "multilang" as const, placeholder: "Fikr matni", required: false },
   { name: "type", label: "Tur", type: "select" as const, options: [{ value: "text", label: "Matn" }, { value: "video", label: "Video" }] },
   { name: "video_url", label: "Video URL", type: "url" as const, placeholder: "https://youtube.com/..." },
   { name: "image", label: "Rasm", type: "file" as const },
@@ -123,7 +125,7 @@ export const testimonialFields = [
 
 export const videoReviewFields = [
   { name: "name", label: "Ism", type: "multilang" as const, placeholder: "Talaba ismi" },
-  { name: "description", label: "Izoh", type: "multilang-textarea" as const, placeholder: "Qisqa izoh" },
+  { name: "description", label: "Izoh", type: "multilang-textarea" as const, placeholder: "Qisqa izoh", required: false },
   { name: "video", label: "Video fayl", type: "file" as const },
   { name: "order", label: "Tartib", type: "number" as const },
   { name: "is_active", label: "Faol", type: "boolean" as const },

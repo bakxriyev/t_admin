@@ -492,7 +492,7 @@ export default function HeroPage() {
                       {/* Content */}
                       <div className="p-4 flex-1 flex flex-col">
                         <Link
-                          href={`/hero/${item.id}`}
+                          href={`/hero/${item.id}/edit`}
                           className="font-semibold text-sm leading-snug line-clamp-2 hover:text-primary transition-colors mb-1"
                         >
                           {item.title_uz || item.title_ru || item.title_en}
@@ -518,7 +518,7 @@ export default function HeroPage() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 hover:bg-primary/10"
-                              onClick={() => router.push(`/hero/${item.id}`)}
+                              onClick={() => router.push(`/hero/${item.id}/edit`)}
                             >
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
@@ -628,7 +628,7 @@ export default function HeroPage() {
                           <td className="px-5 py-3.5">
                             <div className="min-w-0 max-w-[200px]">
                               <Link
-                                href={`/hero/${item.id}`}
+                                href={`/hero/${item.id}/edit`}
                                 className="font-medium text-sm hover:text-primary transition-colors line-clamp-1"
                               >
                                 {item.title_uz ||
@@ -676,7 +676,7 @@ export default function HeroPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 hover:bg-primary/10"
-                                onClick={() => router.push(`/hero/${item.id}`)}
+                                onClick={() => router.push(`/hero/${item.id}/edit`)}
                               >
                                 <Eye className="h-3.5 w-3.5" />
                               </Button>

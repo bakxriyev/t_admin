@@ -18,18 +18,22 @@ import {
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { getImageUrl } from "@/lib/utils";
+import { fillMissingTranslations, withRequiredTranslations } from "@/lib/multilang";
 
-const aboutSchema = z.object({
-  content_uz: z.string().min(1, "Majburiy maydon"),
-  content_ru: z.string().min(1, "Majburiy maydon"),
-  content_en: z.string().min(1, "Majburiy maydon"),
-  mission_uz: z.string().optional(),
-  mission_ru: z.string().optional(),
-  mission_en: z.string().optional(),
-  vision_uz: z.string().optional(),
-  vision_ru: z.string().optional(),
-  vision_en: z.string().optional(),
-});
+const aboutSchema = withRequiredTranslations(
+  z.object({
+    content_uz: z.string().optional(),
+    content_ru: z.string().optional(),
+    content_en: z.string().optional(),
+    mission_uz: z.string().optional(),
+    mission_ru: z.string().optional(),
+    mission_en: z.string().optional(),
+    vision_uz: z.string().optional(),
+    vision_ru: z.string().optional(),
+    vision_en: z.string().optional(),
+  }),
+  [{ name: "content", label: "Matn" }]
+);
 
 type AboutFormData = z.infer<typeof aboutSchema>;
 
@@ -151,14 +155,11 @@ export default function AboutPage() {
   };
 
   const onSubmit = async (data: AboutFormData) => {
-    if (!data.content_uz || !data.content_ru || !data.content_en) {
-      toast.error("Barcha tillardagi matn maydonlari majburiy");
-      return;
-    }
     setIsLoading(true);
     try {
+      const payload = fillMissingTranslations(data, ["content", "mission", "vision"]);
       const formData = new FormData();
-      Object.entries(data).forEach(([key, value]) => {
+      Object.entries(payload).forEach(([key, value]) => {
         if (value) formData.append(key, value as string);
       });
 
@@ -210,9 +211,10 @@ export default function AboutPage() {
         setSavingValue(null);
         return;
       }
+      const filled = fillMissingTranslations(d, ["title", "description"]);
       const payload = {
-        title_uz: d.title_uz || "", title_ru: d.title_ru || "", title_en: d.title_en || "",
-        description_uz: d.description_uz || "", description_ru: d.description_ru || "", description_en: d.description_en || "",
+        title_uz: filled.title_uz || "", title_ru: filled.title_ru || "", title_en: filled.title_en || "",
+        description_uz: filled.description_uz || "", description_ru: filled.description_ru || "", description_en: filled.description_en || "",
       };
       const res = await api.put(`/api/about-values/${id}`, payload);
       const updated = res.data.data || res.data;
@@ -228,21 +230,23 @@ export default function AboutPage() {
   };
 
   const createValue = async () => {
-    const titleUz = newValue.title_uz?.trim() || "";
-    const titleRu = newValue.title_ru?.trim() || "";
-    const titleEn = newValue.title_en?.trim() || "";
+    const filled = fillMissingTranslations(newValue, ["title", "description"]);
+    const titleUz = filled.title_uz?.trim() || "";
+    const titleRu = filled.title_ru?.trim() || "";
+    const titleEn = filled.title_en?.trim() || "";
     if (!titleUz && !titleRu && !titleEn) {
       toast.error("Kamida bitta tilda sarlavha kiriting");
       return;
     }
     setCreatingValue(true);
     try {
+      const keySource = titleUz || titleRu || titleEn;
       const payload = {
-        key: newValue.key?.trim() || titleUz.toLowerCase().replace(/\s+/g, "_") || `value_${Date.now()}`,
+        key: newValue.key?.trim() || keySource.toLowerCase().replace(/\s+/g, "_") || `value_${Date.now()}`,
         title_uz: titleUz, title_ru: titleRu, title_en: titleEn,
-        description_uz: newValue.description_uz?.trim() || "",
-        description_ru: newValue.description_ru?.trim() || "",
-        description_en: newValue.description_en?.trim() || "",
+        description_uz: filled.description_uz?.trim() || "",
+        description_ru: filled.description_ru?.trim() || "",
+        description_en: filled.description_en?.trim() || "",
         order: values.length + 1,
       };
       const res = await api.post("/api/about-values", payload);
@@ -284,7 +288,8 @@ export default function AboutPage() {
     if (!newTimeline?.year) { toast.error("Yil majburiy"); return; }
     setSavingTimeline("new");
     try {
-      const res = await api.post("/api/timeline", newTimeline);
+      const payload = fillMissingTranslations(newTimeline, ["title", "description"]);
+      const res = await api.post("/api/timeline", payload);
       const created = res.data.data || res.data;
       setTimeline((prev) => [...prev, created].sort((a, b) => (a.order || 0) - (b.order || 0)));
       setNewTimeline(null);
@@ -301,8 +306,9 @@ export default function AboutPage() {
     setSavingTimeline(id);
     try {
       const d = editTimeline[id];
-      await api.put(`/api/timeline/${id}`, d);
-      setTimeline((prev) => prev.map((t) => (t.id === id ? { ...t, ...d } : t)));
+      const payload = fillMissingTranslations(d, ["title", "description"]);
+      await api.put(`/api/timeline/${id}`, payload);
+      setTimeline((prev) => prev.map((t) => (t.id === id ? { ...t, ...payload } : t)));
       cancelEditTimeline(id);
       toast.success("Saqlanib qoldi");
     } catch { toast.error("Xatolik yuz berdi"); }
@@ -372,9 +378,15 @@ export default function AboutPage() {
               <div className="icon-3d rounded-xl p-2.5 shrink-0"><Info className="h-5 w-5 text-primary-foreground" /></div>
               <div>
                 <h3 className="text-lg font-semibold">Umumiy ma&apos;lumot</h3>
-                <p className="text-sm text-muted-foreground">Asosiy matn, missiya va maqsadlarni 3 tilda kiriting</p>
+                <p className="text-sm text-muted-foreground">Kamida bitta tilda kiriting — bo'sh tillar shu ma'lumot bilan avtomatik to'ldiriladi</p>
               </div>
             </div>
+            {(errors as any).content_uz && (
+              <p className="text-sm text-destructive flex items-center gap-1">
+                <span className="size-1.5 rounded-full bg-destructive shrink-0" />
+                {(errors as any).content_uz?.message}
+              </p>
+            )}
             <LanguageTabs>
               {(lang) => (
                 <div className="space-y-4">
@@ -384,12 +396,6 @@ export default function AboutPage() {
                     </Label>
                     <Textarea {...register(`content_${lang}` as any)} rows={8}
                       className="bg-background/50 resize-none" placeholder={`${LANG_LABELS[lang]} tilida matn kiriting...`} />
-                    {(errors as any)[`content_${lang}`] && (
-                      <p className="text-sm text-destructive flex items-center gap-1">
-                        <span className="size-1.5 rounded-full bg-destructive shrink-0" />
-                        {(errors as any)[`content_${lang}`]?.message}
-                      </p>
-                    )}
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">

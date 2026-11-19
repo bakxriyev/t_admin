@@ -25,7 +25,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
-  Mail,
   Hash,
 } from "lucide-react";
 import { getImageUrl } from "@/lib/utils";
@@ -101,8 +100,7 @@ export default function TeachersPage() {
           t.last_name_ru?.toLowerCase().includes(s) ||
           t.first_name_en?.toLowerCase().includes(s) ||
           t.last_name_en?.toLowerCase().includes(s) ||
-          t.position_uz?.toLowerCase().includes(s) ||
-          t.email?.toLowerCase().includes(s)
+          t.position_uz?.toLowerCase().includes(s)
       );
     }
 
@@ -340,7 +338,7 @@ export default function TeachersPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Ism, familiya, lavozim yoki email bo&apos;yicha qidirish..."
+                placeholder="Ism, familiya yoki lavozim bo&apos;yicha qidirish..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9 bg-background/50"
@@ -432,19 +430,6 @@ export default function TeachersPage() {
                         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                           {item.position_uz || item.position_ru || item.position_en || "—"}
                         </p>
-                        {item.degree_uz && (
-                          <p className="text-xs text-muted-foreground/70 mt-0.5 line-clamp-1">
-                            {item.degree_uz}
-                          </p>
-                        )}
-
-                        {item.email && (
-                          <div className="flex items-center gap-1 mt-2 text-[11px] text-muted-foreground/60">
-                            <Mail className="h-3 w-3" />
-                            <span className="truncate">{item.email}</span>
-                          </div>
-                        )}
-
                         <div className="mt-auto flex items-center justify-between pt-3 border-t border-border/50">
                           <Badge
                             className={`text-[10px] ${
@@ -525,9 +510,6 @@ export default function TeachersPage() {
                       <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Lavozim
                       </th>
-                      <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Daraja
-                      </th>
                       <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-28">
                         Holat
                       </th>
@@ -574,11 +556,6 @@ export default function TeachersPage() {
                             <span className="font-medium text-sm">
                               {fullName || "—"}
                             </span>
-                            {item.email && (
-                              <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[180px]">
-                                {item.email}
-                              </p>
-                            )}
                           </td>
                           {/* Lavozim */}
                           <td className="px-5 py-3.5">
@@ -588,18 +565,6 @@ export default function TeachersPage() {
                                 item.position_en ||
                                 "—"}
                             </span>
-                          </td>
-                          {/* Daraja */}
-                          <td className="px-5 py-3.5">
-                            {item.degree_uz ? (
-                              <Badge className="text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
-                                {item.degree_uz}
-                              </Badge>
-                            ) : (
-                              <span className="text-sm text-muted-foreground/50">
-                                —
-                              </span>
-                            )}
                           </td>
                           {/* Holat */}
                           <td className="px-5 py-3.5">

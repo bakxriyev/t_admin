@@ -3,7 +3,7 @@
 import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,16 +11,6 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { LanguageTabs } from "./LanguageTabs";
 import { FormLanguageSwitcher } from "./FormLanguageSwitcher";
 import { ImageUpload } from "./ImageUpload";
@@ -28,7 +18,8 @@ import { MultiImageUpload } from "./MultiImageUpload";
 import { VideoUpload } from "./VideoUpload";
 import { UploadProgressBar, type UploadFileStatus } from "./UploadProgressBar";
 import { compressImages, formatSize } from "@/lib/imageCompression";
-import { Loader2, ArrowLeft, Save, Copy, AlertCircle } from "lucide-react";
+import { fillMissingTranslations, MULTILANG_LANGUAGES } from "@/lib/multilang";
+import { Loader2, ArrowLeft, Save, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { type ZodSchema } from "zod";
@@ -54,7 +45,6 @@ interface EntityFormProps {
   isEdit?: boolean;
 }
 
-const MULTILANG_SUFFIXES = ["_uz", "_ru", "_en"];
 const LANG_LABELS: Record<string, string> = { uz: "O'zbek", ru: "Русский", en: "English" };
 
 export function EntityForm({
@@ -73,10 +63,6 @@ export function EntityForm({
   const [fileValues, setFileValues] = useState<Record<string, File[] | File | null>>({});
   const initialDataRef = useRef<any>(null);
   const [initialImage, setInitialImage] = useState<Record<string, string | string[] | null>>({});
-
-  const [missingFields, setMissingFields] = useState<{ label: string; filledLang: string; emptyLangs: string[] }[]>([]);
-  const [showLangDialog, setShowLangDialog] = useState(false);
-  const pendingDataRef = useRef<any>(null);
 
   const [uploadStatuses, setUploadStatuses] = useState<UploadFileStatus[]>([]);
   const [uploadStep, setUploadStep] = useState<"compressing" | "uploading" | "done">("compressing");
@@ -100,8 +86,8 @@ export function EntityForm({
           const imgs: Record<string, string | null> = {};
           fields.forEach((f) => {
             if (f.type === "multilang" || f.type === "multilang-textarea") {
-              MULTILANG_SUFFIXES.forEach((suffix) => {
-                formData[`${f.name}${suffix}`] = data[`${f.name}${suffix}`] ?? "";
+              MULTILANG_LANGUAGES.forEach((lang) => {
+                formData[`${f.name}_${lang}`] = data[`${f.name}_${lang}`] ?? "";
               });
             } else if (f.type === "file" || f.type === "multi-file") {
               imgs[f.name] = data[f.name] || (f.type === "multi-file" ? [] : null);
@@ -130,35 +116,22 @@ export function EntityForm({
     setFileValues((prev) => ({ ...prev, [name]: file }));
   };
 
-  const checkMultilangFields = (data: any) => {
-    const missing: { label: string; filledLang: string; emptyLangs: string[] }[] = [];
-    const langKeys = MULTILANG_SUFFIXES.map((s) => s.replace("_", ""));
+  const autoFillMultilang = (data: any) => {
+    const multilangFields = fields
+      .filter((f) => f.type === "multilang" || f.type === "multilang-textarea")
+      .map((f) => f.name);
+    const filledData = fillMissingTranslations(data, multilangFields);
 
-    fields.forEach((f) => {
-      if (f.type !== "multilang" && f.type !== "multilang-textarea") return;
-
-      const filled: string[] = [];
-      const empty: string[] = [];
-
-      langKeys.forEach((lang) => {
-        const val = data[`${f.name}_${lang}`];
-        if (val && String(val).trim()) {
-          filled.push(lang);
-        } else {
-          empty.push(lang);
+    multilangFields.forEach((field) => {
+      MULTILANG_LANGUAGES.forEach((lang) => {
+        const key = `${field}_${lang}`;
+        if (filledData[key] !== data[key]) {
+          setValue(key, filledData[key]);
         }
       });
-
-      if (filled.length > 0 && empty.length > 0) {
-        missing.push({
-          label: f.label,
-          filledLang: filled[0],
-          emptyLangs: empty,
-        });
-      }
     });
 
-    return missing;
+    return filledData;
   };
 
   const buildStatuses = (files: File[]): UploadFileStatus[] => {
@@ -337,36 +310,8 @@ export function EntityForm({
   };
 
   const onSubmit = async (data: any) => {
-    const missing = checkMultilangFields(data);
-
-    if (missing.length > 0) {
-      pendingDataRef.current = data;
-      setMissingFields(missing);
-      setShowLangDialog(true);
-      return;
-    }
-
-    await doSubmit(data);
-  };
-
-  const handleAutoFill = async () => {
-    const data = pendingDataRef.current;
-
-    missingFields.forEach(({ label: fieldLabel, filledLang, emptyLangs }) => {
-      const field = fields.find((f) => f.label === fieldLabel);
-      if (!field) return;
-      const filledValue = data[`${field.name}_${filledLang}`];
-      emptyLangs.forEach((lang) => {
-        data[`${field.name}_${lang}`] = filledValue;
-        setValue(`${field.name}_${lang}`, filledValue);
-      });
-    });
-
-    setShowLangDialog(false);
-    setMissingFields([]);
-    pendingDataRef.current = null;
-
-    await doSubmit(data);
+    const payload = autoFillMultilang(data);
+    await doSubmit(payload);
   };
 
   const requiredMultilangFields = fields.filter(
@@ -396,6 +341,9 @@ export function EntityForm({
   const renderField = (field: FieldConfig) => {
     if (field.type === "multilang" || field.type === "multilang-textarea") {
       const isTextarea = field.type === "multilang-textarea";
+      const langError = MULTILANG_LANGUAGES
+        .map((lang) => (errors as any)[`${field.name}_${lang}`])
+        .find(Boolean);
       return (
         <div key={field.name} className="card-3d">
           <div className="card-3d-inner glass-card card-shine rounded-2xl p-5 md:p-7 space-y-5">
@@ -405,12 +353,18 @@ export function EntityForm({
               </span>
               <div>
                 <h3 className="font-semibold text-base">{field.label}</h3>
-                <p className="text-xs text-muted-foreground">Barcha tillarda to'ldiring (O'zbek, Русский, English)</p>
+                <p className="text-xs text-muted-foreground">Kamida bitta tilda to'ldiring — bo'sh tillar shu ma'lumot bilan avtomatik to'ldiriladi</p>
               </div>
               {field.required !== false && (
-                <span className="ml-auto text-xs text-destructive font-medium bg-destructive/10 px-2 py-0.5 rounded-full">Majburiy</span>
+                <span className="ml-auto text-xs text-primary font-medium bg-primary/10 px-2 py-0.5 rounded-full whitespace-nowrap">Kamida 1 til</span>
               )}
             </div>
+            {langError && (
+              <p className="text-sm text-destructive flex items-center gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5" />
+                {langError.message}
+              </p>
+            )}
             <LanguageTabs>
               {(lang) => (
                 <div className="space-y-2">
@@ -430,12 +384,6 @@ export function EntityForm({
                       placeholder={`${field.placeholder || field.label} (${LANG_LABELS[lang]})`}
                       className="bg-background/50"
                     />
-                  )}
-                  {(errors as any)[`${field.name}_${lang}`] && (
-                    <p className="text-sm text-destructive flex items-center gap-1.5">
-                      <AlertCircle className="h-3.5 w-3.5" />
-                      {(errors as any)[`${field.name}_${lang}`]?.message}
-                    </p>
                   )}
                 </div>
               )}
@@ -542,7 +490,7 @@ export function EntityForm({
         <div>
           <h1 className="text-3xl font-bold tracking-tight gradient-text">{currentTitle}</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {isEdit ? "Mavjud yozuvni tahrirlash" : "Yangi yozuv qo'shish"} — barcha tillarda to'ldiring
+            {isEdit ? "Mavjud yozuvni tahrirlash" : "Yangi yozuv qo'shish"} — kamida bitta tilda to'ldiring, qolgan tillar avtomatik to'ldiriladi
           </p>
         </div>
       </div>
@@ -623,49 +571,6 @@ export function EntityForm({
           </Button>
         </div>
       </form>
-
-      {/* Multi-language auto-fill dialog */}
-      <AlertDialog open={showLangDialog} onOpenChange={setShowLangDialog}>
-        <AlertDialogContent className="glass-card rounded-2xl border-border/30">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-foreground">
-              <div className="icon-3d rounded-lg p-1.5">
-                <Copy className="h-4 w-4 text-primary-foreground" />
-              </div>
-              Ko'p tilli maydonlarni to'ldirish
-            </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3 text-muted-foreground">
-              <p>Quyidagi maydonlar barcha tillarda to'ldirilmagan. Bitta tildagi ma'lumotni qolgan tillarga nusxalashni xohlaysizmi?</p>
-              <div className="space-y-2 mt-3">
-                {missingFields.map((mf, i) => (
-                  <div key={i} className="glass-card rounded-xl p-3 text-sm">
-                    <p className="font-medium text-foreground mb-1">{mf.label}</p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md text-xs font-medium">
-                        {LANG_LABELS[mf.filledLang]} ✓
-                      </span>
-                      <span className="text-muted-foreground">→</span>
-                      {mf.emptyLangs.map((l) => (
-                        <span key={l} className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-md text-xs">
-                          {LANG_LABELS[l]}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowLangDialog(false)} className="gap-2">
-              Yo'q, o'zim to'ldiraman
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleAutoFill} className="btn-3d gap-2">
-              <Copy className="h-4 w-4" /> Ha, nusxalash
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

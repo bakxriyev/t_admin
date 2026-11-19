@@ -21,7 +21,6 @@ import {
   Users,
   UserCheck,
   UserX,
-  Mail,
   Hash,
   ArrowUpDown,
   ChevronLeft,
@@ -100,8 +99,7 @@ export default function TeamPage() {
           m.last_name_en?.toLowerCase().includes(s) ||
           m.position_uz?.toLowerCase().includes(s) ||
           m.position_ru?.toLowerCase().includes(s) ||
-          m.position_en?.toLowerCase().includes(s) ||
-          m.email?.toLowerCase().includes(s)
+          m.position_en?.toLowerCase().includes(s)
       );
     }
 
@@ -320,7 +318,7 @@ export default function TeamPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Ism, lavozim yoki email bo&apos;yicha qidirish..."
+                placeholder="Ism yoki lavozim bo&apos;yicha qidirish..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9 bg-background/50"
@@ -396,13 +394,6 @@ export default function TeamPage() {
                         <p className="text-xs text-muted-foreground mb-1">
                           {item.position_uz || item.position_ru || item.position_en}
                         </p>
-                        {item.email && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
-                            <Mail className="h-3 w-3" />
-                            <span className="truncate max-w-[160px]">{item.email}</span>
-                          </div>
-                        )}
-
                         <div className="flex items-center gap-2 mb-3">
                           <Badge
                             className={`text-[10px] ${
@@ -477,9 +468,6 @@ export default function TeamPage() {
                       <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Lavozim
                       </th>
-                      <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Email
-                      </th>
                       <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">
                         Holat
                       </th>
@@ -524,12 +512,6 @@ export default function TeamPage() {
                           <td className="px-5 py-3.5">
                             <span className="text-sm text-muted-foreground">
                               {item.position_uz || item.position_ru || item.position_en}
-                            </span>
-                          </td>
-                          {/* Email */}
-                          <td className="px-5 py-3.5">
-                            <span className="text-sm text-muted-foreground">
-                              {item.email || "—"}
                             </span>
                           </td>
                           {/* Holat */}

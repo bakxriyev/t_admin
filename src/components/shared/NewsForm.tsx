@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, ArrowLeft, Save } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import { fillMissingTranslations } from "@/lib/multilang";
 import { useEffect, useState } from "react";
 
 interface NewsFormProps {
@@ -59,11 +60,13 @@ export function NewsForm({ initialData, isEdit = false }: NewsFormProps) {
   const onSubmit = async (data: NewsFormData) => {
     setIsLoading(true);
     try {
+      // Empty languages are filled from the first filled one (backend requires all three),
+      // and only real form fields with a value are sent (no "undefined"/"null" strings).
+      const filled = fillMissingTranslations(data, ["title", "content", "excerpt"]) as Record<string, unknown>;
       const formData = new FormData();
-      Object.entries(data).forEach(([key, value]) => {
-        if (key !== "image") {
-          formData.append(key, value as string);
-        }
+      Object.entries(filled).forEach(([key, value]) => {
+        if (key === "image" || value === undefined || value === null) return;
+        formData.append(key, String(value));
       });
       if (image) formData.append("image", image);
 

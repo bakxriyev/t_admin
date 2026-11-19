@@ -6,7 +6,7 @@ import { vacancySchema } from "@/lib/validations";
 const fields = [
   { name: "title", label: "Sarlavha", type: "multilang" as const, placeholder: "Sarlavha" },
   { name: "description", label: "Tavsif", type: "multilang-textarea" as const, placeholder: "Tavsif" },
-  { name: "requirements", label: "Talablar", type: "multilang-textarea" as const, placeholder: "Talablar" },
+  { name: "requirements", label: "Talablar", type: "multilang-textarea" as const, placeholder: "Talablar", required: false },
   {
     name: "type", label: "Turi", type: "select" as const,
     options: [

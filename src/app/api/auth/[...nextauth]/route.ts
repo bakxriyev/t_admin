@@ -2,6 +2,8 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import axios from "axios";
 
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "https://b.tashkentlawschool.uz").replace(/\/+$/, "");
+
 const handler = NextAuth({
   providers: [
     CredentialsProvider({
@@ -15,7 +17,7 @@ async authorize(credentials) {
 
           try {
             const res = await axios.post(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
+              `${API_URL}/api/auth/login`,
               {
                 email: credentials.email,
                 password: credentials.password,

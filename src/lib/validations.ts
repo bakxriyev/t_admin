@@ -1,115 +1,144 @@
 import { z } from "zod";
+import { withRequiredTranslations } from "./multilang";
+
+const optionalText = z.string().optional();
 
 export const loginSchema = z.object({
   email: z.string().email("Noto'g'ri email format"),
   password: z.string().min(6, "Parol kamida 6 belgidan iborat bo'lishi kerak"),
 });
 
-export const newsSchema = z.object({
-  title_uz: z.string().min(1, "Sarlavha (UZ) majburiy"),
-  title_ru: z.string().min(1, "Заголовок (RU) обязателен"),
-  title_en: z.string().min(1, "Title (EN) is required"),
-  content_uz: z.string().min(1, "Matn (UZ) majburiy"),
-  content_ru: z.string().min(1, "Текст (RU) обязателен"),
-  content_en: z.string().min(1, "Content (EN) is required"),
-  excerpt_uz: z.string().optional(),
-  excerpt_ru: z.string().optional(),
-  excerpt_en: z.string().optional(),
-  status: z.enum(["published", "draft"]),
-  image: z.any().optional(),
-  video_url: z.string().optional(),
-});
+export const newsSchema = withRequiredTranslations(
+  z.object({
+    title_uz: optionalText,
+    title_ru: optionalText,
+    title_en: optionalText,
+    content_uz: optionalText,
+    content_ru: optionalText,
+    content_en: optionalText,
+    excerpt_uz: optionalText,
+    excerpt_ru: optionalText,
+    excerpt_en: optionalText,
+    status: z.enum(["published", "draft"]),
+    image: z.any().optional(),
+    video_url: z.string().optional(),
+  }),
+  [
+    { name: "title", label: "Sarlavha" },
+    { name: "content", label: "Matn" },
+  ]
+);
 
-export const teacherSchema = z.object({
-  first_name_uz: z.string().min(1, "Ism (UZ) majburiy"),
-  first_name_ru: z.string().min(1, "Имя (RU) обязательно"),
-  first_name_en: z.string().min(1, "First name (EN) is required"),
-  last_name_uz: z.string().min(1, "Familiya (UZ) majburiy"),
-  last_name_ru: z.string().min(1, "Фамилия (RU) обязательна"),
-  last_name_en: z.string().min(1, "Last name (EN) is required"),
-  patronymic_uz: z.string().optional(),
-  patronymic_ru: z.string().optional(),
-  patronymic_en: z.string().optional(),
-  position_uz: z.string().min(1, "Lavozim (UZ) majburiy"),
-  position_ru: z.string().min(1, "Должность (RU) обязательна"),
-  position_en: z.string().min(1, "Position (EN) is required"),
-  bio_uz: z.string().optional(),
-  bio_ru: z.string().optional(),
-  bio_en: z.string().optional(),
-  degree_uz: z.string().optional(),
-  degree_ru: z.string().optional(),
-  degree_en: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  phone: z.string().optional(),
-  order: z.number().optional(),
-  is_active: z.boolean().optional(),
-  photo: z.any().optional(),
-});
+export const teacherSchema = withRequiredTranslations(
+  z.object({
+    first_name_uz: optionalText,
+    first_name_ru: optionalText,
+    first_name_en: optionalText,
+    last_name_uz: optionalText,
+    last_name_ru: optionalText,
+    last_name_en: optionalText,
+    patronymic_uz: optionalText,
+    patronymic_ru: optionalText,
+    patronymic_en: optionalText,
+    position_uz: optionalText,
+    position_ru: optionalText,
+    position_en: optionalText,
+    order: z.number().optional(),
+    is_active: z.boolean().optional(),
+    photo: z.any().optional(),
+  }),
+  [
+    { name: "first_name", label: "Ism" },
+    { name: "last_name", label: "Familiya" },
+    { name: "position", label: "Lavozim" },
+  ]
+);
 
-export const reviewSchema = z.object({
-  name_uz: z.string().min(1, "Ism (UZ) majburiy"),
-  name_ru: z.string().min(1, "Имя (RU) обязательно"),
-  name_en: z.string().min(1, "Name (EN) is required"),
-  position_uz: z.string().min(1, "Lavozim (UZ) majburiy"),
-  position_ru: z.string().min(1, "Должность (RU) обязательна"),
-  position_en: z.string().min(1, "Position (EN) is required"),
-  content_uz: z.string().min(1, "Matn (UZ) majburiy"),
-  content_ru: z.string().min(1, "Текст (RU) обязателен"),
-  content_en: z.string().min(1, "Content (EN) is required"),
-  rating: z.number().min(1).max(5),
-  photo: z.any().optional(),
-  is_active: z.boolean().optional(),
-});
+export const reviewSchema = withRequiredTranslations(
+  z.object({
+    name_uz: optionalText,
+    name_ru: optionalText,
+    name_en: optionalText,
+    position_uz: optionalText,
+    position_ru: optionalText,
+    position_en: optionalText,
+    content_uz: optionalText,
+    content_ru: optionalText,
+    content_en: optionalText,
+    rating: z.number().min(1).max(5),
+    photo: z.any().optional(),
+    is_active: z.boolean().optional(),
+  }),
+  [
+    { name: "name", label: "Ism" },
+    { name: "position", label: "Lavozim" },
+    { name: "content", label: "Matn" },
+  ]
+);
 
-export const resultSchema = z.object({
-  student_name_uz: z.string().min(1, "Ism (UZ) majburiy"),
-  student_name_ru: z.string().min(1, "Имя (RU) обязательно"),
-  student_name_en: z.string().min(1, "Name (EN) is required"),
-  achievement_uz: z.string().min(1, "Yutuq (UZ) majburiy"),
-  achievement_ru: z.string().min(1, "Достижение (RU) обязательна"),
-  achievement_en: z.string().min(1, "Achievement (EN) is required"),
-  description_uz: z.string().optional(),
-  description_ru: z.string().optional(),
-  description_en: z.string().optional(),
-  year: z.number().min(1900).max(2100),
-  photos: z.array(z.any()).optional(),
-  is_active: z.boolean().optional(),
-});
+export const resultSchema = withRequiredTranslations(
+  z.object({
+    student_name_uz: optionalText,
+    student_name_ru: optionalText,
+    student_name_en: optionalText,
+    achievement_uz: optionalText,
+    achievement_ru: optionalText,
+    achievement_en: optionalText,
+    description_uz: optionalText,
+    description_ru: optionalText,
+    description_en: optionalText,
+    year: z.number().min(1900).max(2100),
+    photos: z.array(z.any()).optional(),
+    is_active: z.boolean().optional(),
+  }),
+  [
+    { name: "student_name", label: "Talaba ismi" },
+    { name: "achievement", label: "Yutuq" },
+  ]
+);
 
-export const teamMemberSchema = z.object({
-  first_name_uz: z.string().min(1, "Ism (UZ) majburiy"),
-  first_name_ru: z.string().min(1, "Имя (RU) обязательно"),
-  first_name_en: z.string().min(1, "First name (EN) is required"),
-  last_name_uz: z.string().min(1, "Familiya (UZ) majburiy"),
-  last_name_ru: z.string().min(1, "Фамилия (RU) обязательна"),
-  last_name_en: z.string().min(1, "Last name (EN) is required"),
-  position_uz: z.string().min(1, "Lavozim (UZ) majburiy"),
-  position_ru: z.string().min(1, "Должность (RU) обязательна"),
-  position_en: z.string().min(1, "Position (EN) is required"),
-  bio_uz: z.string().optional(),
-  bio_ru: z.string().optional(),
-  bio_en: z.string().optional(),
-  photo: z.any().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  phone: z.string().optional(),
-  order: z.number().optional(),
-  is_active: z.boolean().optional(),
-});
+export const teamMemberSchema = withRequiredTranslations(
+  z.object({
+    first_name_uz: optionalText,
+    first_name_ru: optionalText,
+    first_name_en: optionalText,
+    last_name_uz: optionalText,
+    last_name_ru: optionalText,
+    last_name_en: optionalText,
+    position_uz: optionalText,
+    position_ru: optionalText,
+    position_en: optionalText,
+    photo: z.any().optional(),
+    order: z.number().optional(),
+    is_active: z.boolean().optional(),
+  }),
+  [
+    { name: "first_name", label: "Ism" },
+    { name: "last_name", label: "Familiya" },
+    { name: "position", label: "Lavozim" },
+  ]
+);
 
-export const vacancySchema = z.object({
-  title_uz: z.string().min(1, "Sarlavha (UZ) majburiy"),
-  title_ru: z.string().min(1, "Название (RU) обязательно"),
-  title_en: z.string().min(1, "Title (EN) is required"),
-  description_uz: z.string().min(1, "Tavsif (UZ) majburiy"),
-  description_ru: z.string().min(1, "Описание (RU) обязательно"),
-  description_en: z.string().min(1, "Description (EN) is required"),
-  requirements_uz: z.string().optional(),
-  requirements_ru: z.string().optional(),
-  requirements_en: z.string().optional(),
-  salary: z.string().optional(),
-  type: z.enum(["full_time", "part_time", "internship"]),
-  is_active: z.boolean().optional(),
-});
+export const vacancySchema = withRequiredTranslations(
+  z.object({
+    title_uz: optionalText,
+    title_ru: optionalText,
+    title_en: optionalText,
+    description_uz: optionalText,
+    description_ru: optionalText,
+    description_en: optionalText,
+    requirements_uz: optionalText,
+    requirements_ru: optionalText,
+    requirements_en: optionalText,
+    salary: z.string().optional(),
+    type: z.enum(["full_time", "part_time", "internship"]),
+    is_active: z.boolean().optional(),
+  }),
+  [
+    { name: "title", label: "Sarlavha" },
+    { name: "description", label: "Tavsif" },
+  ]
+);
 
 export const settingsSchema = z.object({
   site_name_uz: z.string().min(1, "Sayt nomi (UZ) majburiy"),
@@ -127,83 +156,101 @@ export const settingsSchema = z.object({
   favicon: z.any().optional(),
 });
 
-export const heroSchema = z.object({
-  title_uz: z.string().min(1, "Sarlavha (UZ) majburiy"),
-  title_ru: z.string().min(1, "Заголовок (RU) обязателен"),
-  title_en: z.string().min(1, "Title (EN) is required"),
-  subtitle_uz: z.string().optional(),
-  subtitle_ru: z.string().optional(),
-  subtitle_en: z.string().optional(),
-  button_text_uz: z.string().optional(),
-  button_text_ru: z.string().optional(),
-  button_text_en: z.string().optional(),
-  button_link: z.string().url("Noto'g'ri URL format").optional().or(z.literal("")),
-  video_url: z.string().url("Noto'g'ri URL format").optional().or(z.literal("")),
-  image: z.any().optional(),
-  order: z.number().optional(),
-  is_active: z.boolean().optional(),
-  title_font_size: z.string().optional(),
-  subtitle_font_size: z.string().optional(),
-  title_font_weight: z.string().optional(),
-  subtitle_font_weight: z.string().optional(),
-  text_align: z.string().optional(),
-  max_width: z.string().optional(),
-});
+export const heroSchema = withRequiredTranslations(
+  z.object({
+    title_uz: optionalText,
+    title_ru: optionalText,
+    title_en: optionalText,
+    subtitle_uz: optionalText,
+    subtitle_ru: optionalText,
+    subtitle_en: optionalText,
+    button_text_uz: optionalText,
+    button_text_ru: optionalText,
+    button_text_en: optionalText,
+    button_link: z.string().url("Noto'g'ri URL format").optional().or(z.literal("")),
+    video_url: z.string().url("Noto'g'ri URL format").optional().or(z.literal("")),
+    image: z.any().optional(),
+    order: z.number().optional(),
+    is_active: z.boolean().optional(),
+    title_font_size: z.string().optional(),
+    subtitle_font_size: z.string().optional(),
+    title_font_weight: z.string().optional(),
+    subtitle_font_weight: z.string().optional(),
+    text_align: z.string().optional(),
+    max_width: z.string().optional(),
+  }),
+  [{ name: "title", label: "Sarlavha" }]
+);
 
-export const statisticSchema = z.object({
-  label_uz: z.string().min(1, "Label (UZ) majburiy"),
-  label_ru: z.string().min(1, "Label (RU) обязателен"),
-  label_en: z.string().min(1, "Label (EN) is required"),
-  value: z.number().min(0),
-  suffix: z.string().optional(),
-  icon: z.string().optional(),
-  order: z.number().optional(),
-  is_active: z.boolean().optional(),
-});
+export const statisticSchema = withRequiredTranslations(
+  z.object({
+    label_uz: optionalText,
+    label_ru: optionalText,
+    label_en: optionalText,
+    value: z.number().min(0),
+    suffix: z.string().optional(),
+    icon: z.string().optional(),
+    order: z.number().optional(),
+    is_active: z.boolean().optional(),
+  }),
+  [{ name: "label", label: "Nomi" }]
+);
 
-export const courseOfferSchema = z.object({
-  title_uz: z.string().min(1, "Sarlavha (UZ) majburiy"),
-  title_ru: z.string().min(1, "Название (RU) обязательно"),
-  title_en: z.string().min(1, "Title (EN) is required"),
-  description_uz: z.string().min(1, "Tavsif (UZ) majburiy"),
-  description_ru: z.string().min(1, "Описание (RU) обязательно"),
-  description_en: z.string().min(1, "Description (EN) is required"),
-  price: z.number().min(0, "Narx 0 dan kichik bo'lmasligi kerak"),
-  duration: z.string().optional(),
-  level: z.string().optional(),
-  image: z.any().optional(),
-  order: z.number().optional(),
-  is_active: z.boolean().optional(),
-});
+export const courseOfferSchema = withRequiredTranslations(
+  z.object({
+    title_uz: optionalText,
+    title_ru: optionalText,
+    title_en: optionalText,
+    description_uz: optionalText,
+    description_ru: optionalText,
+    description_en: optionalText,
+    price: z.number().min(0, "Narx 0 dan kichik bo'lmasligi kerak"),
+    duration: z.string().optional(),
+    level: z.string().optional(),
+    image: z.any().optional(),
+    order: z.number().optional(),
+    is_active: z.boolean().optional(),
+  }),
+  [
+    { name: "title", label: "Nomi" },
+    { name: "description", label: "Tavsif" },
+  ]
+);
 
-export const testimonialSchema = z.object({
-  name_uz: z.string().min(1, "Ism (UZ) majburiy"),
-  name_ru: z.string().min(1, "Имя (RU) обязательно"),
-  name_en: z.string().min(1, "Name (EN) is required"),
-  position_uz: z.string().optional(),
-  position_ru: z.string().optional(),
-  position_en: z.string().optional(),
-  content_uz: z.string().optional(),
-  content_ru: z.string().optional(),
-  content_en: z.string().optional(),
-  type: z.enum(["text", "video"]),
-  video_url: z.string().url("Noto'g'ri URL").optional().or(z.literal("")),
-  image: z.any().optional(),
-  order: z.number().optional(),
-  is_active: z.boolean().optional(),
-});
+export const testimonialSchema = withRequiredTranslations(
+  z.object({
+    name_uz: optionalText,
+    name_ru: optionalText,
+    name_en: optionalText,
+    position_uz: optionalText,
+    position_ru: optionalText,
+    position_en: optionalText,
+    content_uz: optionalText,
+    content_ru: optionalText,
+    content_en: optionalText,
+    type: z.enum(["text", "video"]),
+    video_url: z.string().url("Noto'g'ri URL").optional().or(z.literal("")),
+    image: z.any().optional(),
+    order: z.number().optional(),
+    is_active: z.boolean().optional(),
+  }),
+  [{ name: "name", label: "Ism" }]
+);
 
-export const videoReviewSchema = z.object({
-  name_uz: z.string().min(1, "Ism (UZ) majburiy"),
-  name_ru: z.string().min(1, "Имя (RU) обязательно"),
-  name_en: z.string().min(1, "Name (EN) is required"),
-  description_uz: z.string().optional(),
-  description_ru: z.string().optional(),
-  description_en: z.string().optional(),
-  video: z.any().optional(),
-  order: z.number().optional(),
-  is_active: z.boolean().optional(),
-});
+export const videoReviewSchema = withRequiredTranslations(
+  z.object({
+    name_uz: optionalText,
+    name_ru: optionalText,
+    name_en: optionalText,
+    description_uz: optionalText,
+    description_ru: optionalText,
+    description_en: optionalText,
+    video: z.any().optional(),
+    order: z.number().optional(),
+    is_active: z.boolean().optional(),
+  }),
+  [{ name: "name", label: "Ism" }]
+);
 
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type NewsFormData = z.infer<typeof newsSchema>;

@@ -101,15 +101,7 @@ export interface Teacher {
   position_uz: string;
   position_ru: string;
   position_en: string;
-  bio_uz: string;
-  bio_ru: string;
-  bio_en: string;
-  degree_uz: string;
-  degree_ru: string;
-  degree_en: string;
   photo?: string;
-  email?: string;
-  phone?: string;
   order: number;
   is_active: boolean;
   created_at: string;
@@ -163,12 +155,7 @@ export interface TeamMember {
   position_uz: string;
   position_ru: string;
   position_en: string;
-  bio_uz: string;
-  bio_ru: string;
-  bio_en: string;
   photo?: string;
-  email?: string;
-  phone?: string;
   order: number;
   is_active: boolean;
   created_at: string;

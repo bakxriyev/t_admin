@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, ArrowLeft, Save } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import { fillMissingTranslations } from "@/lib/multilang";
 import { useState, useEffect } from "react";
 
 export default function EditNewsPage() {
@@ -67,8 +68,10 @@ export default function EditNewsPage() {
     setIsLoading(true);
     try {
       const formData = new FormData();
-      Object.entries(data).forEach(([key, value]) => {
-        if (key !== "image") formData.append(key, value as string);
+      const filled = fillMissingTranslations(data, ["title", "content", "excerpt"]) as Record<string, unknown>;
+      Object.entries(filled).forEach(([key, value]) => {
+        if (key === "image" || value === undefined || value === null) return;
+        formData.append(key, String(value));
       });
       if (image) formData.append("image", image);
       await api.put(`/api/news/${params.id}`, formData, {
